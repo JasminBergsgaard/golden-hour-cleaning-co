@@ -1,9 +1,7 @@
 @import "tailwindcss";
 
-/* Use theme() to read Tailwind tokens */
 body {
   font-family: theme(fontFamily.sans);
-  /* maps to Lora, serif from your config */
   color: theme(colors.stone.900);
 }
 

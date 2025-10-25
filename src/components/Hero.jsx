@@ -7,7 +7,6 @@ export default function Hero() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-100 via-amber-50 to-transparent" />
 
-      {/* Top padding removed, only bottom padding left */}
       <div className="relative mx-auto max-w-6xl px-4 pt-4 md:pt-6 pb-16 md:pb-24">
         <div className="grid md:grid-cols-2 gap-10 items-center">
           <div>

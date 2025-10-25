@@ -36,16 +36,13 @@ export default function Header() {
     return () => io.disconnect()
   }, [])
 
-  // Sizes
-  const EXPANDED_H = 288 // 18rem
+  const EXPANDED_H = 288
   const COMPACT_H = 120
   const height = compact ? COMPACT_H : EXPANDED_H
 
-  // Logo sizing
   const logoHeight = Math.min(height * 0.97, 260)
   const logoScale = compact ? 0.98 : 1
 
-  // Keep anchor offsets aligned
   useEffect(() => {
     document.documentElement.style.setProperty('--header-height', `${Math.round(height)}px`)
   }, [height])
