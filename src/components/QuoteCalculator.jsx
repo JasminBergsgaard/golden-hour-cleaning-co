@@ -226,36 +226,30 @@ export default function QuoteCalculator() {
   async function onScheduleClick(e) {
     e.preventDefault();
 
-    const payload = {
-      ts: new Date().toISOString(),
-      bedrooms,
-      bathrooms,
-      sqftInput: result.sqftInput,   // entered
-      usedSqft: result.usedSqft,     // used
-      level,
-      frequency,
-      pricing: {
-        standardRate: result.standardRate,
-        effectiveRate: result.effectiveRateForLevel,
-        base: result.base,
-        levelAdj: result.levelAdj,
-        freqDiscount: result.freqDiscount,
-        total: result.total,
-        bookingDeposit: result.bookingFee,
-      },
-      time: {
-        reservedWindowHours: result.reservedWindowHours,
-        display: result.time.displayText,
-        teamSize: result.time.teamSize,
-      },
-      exceedsCap: result.exceedsCap,
-    };
-
-    try {
-      await logQuoteSnapshot(payload);
-    } catch {
-      // non-blocking
-    }
+    // const payload = {
+    //   ts: new Date().toISOString(),
+    //   bedrooms,
+    //   bathrooms,
+    //   sqftInput: result.sqftInput,   // entered
+    //   usedSqft: result.usedSqft,     // used
+    //   level,
+    //   frequency,
+    //   pricing: {
+    //     standardRate: result.standardRate,
+    //     effectiveRate: result.effectiveRateForLevel,
+    //     base: result.base,
+    //     levelAdj: result.levelAdj,
+    //     freqDiscount: result.freqDiscount,
+    //     total: result.total,
+    //     bookingDeposit: result.bookingFee,
+    //   },
+    //   time: {
+    //     reservedWindowHours: result.reservedWindowHours,
+    //     display: result.time.displayText,
+    //     teamSize: result.time.teamSize,
+    //   },
+    //   exceedsCap: result.exceedsCap,
+    // };
 
     const base = result.calendlyUrl || CONTACT.bookingUrl;
     const url = buildCalendlyUrlWithUtm(base, result, level, frequency, bedrooms, bathrooms);
