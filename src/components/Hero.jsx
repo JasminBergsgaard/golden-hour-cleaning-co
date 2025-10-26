@@ -1,4 +1,5 @@
 import { scrollToId } from '../helpers/scrollToId';
+import hero from '../assets/gh-cleaning-hero.jpg';
 
 export default function Hero() {
   return (
@@ -43,7 +44,7 @@ export default function Hero() {
           <div className="relative">
             <div className="aspect-[4/3] overflow-hidden rounded-3xl shadow-xl ring-1 ring-amber-200">
               <img
-                src="src/assets/gh-cleaning-hero.jpg"
+                src={hero}
                 alt="Sunlit, tidy living room with natural textures"
                 className="h-full w-full object-cover"
               />
