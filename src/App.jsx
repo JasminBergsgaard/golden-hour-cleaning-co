@@ -23,3 +23,8 @@ export default function App() {
     </div>
   );
 }
+
+window.addEventListener('touchstart', e => {
+  const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+  console.log('Top element at touch:', el);
+}, { passive: true });

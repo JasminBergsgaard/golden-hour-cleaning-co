@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatCurrency, buildMailto, buildSmsLink } from "../helpers/contactHelpers";
+import CalendlyBooking from "./CalendlyBooking";
 
 /**
  * Golden Hour Cleaning Co. — Quote Calculator (JS)
@@ -37,6 +38,8 @@ export default function QuoteCalculator() {
   const [level, setLevel] = useState("deep"); // "standard" | "deep" | "move_out"
   const [frequency, setFrequency] = useState("one_time"); // "weekly" | "bi_weekly" | "monthly" | "one_time"
   const [isLevelTipOpen, setIsLevelTipOpen] = useState(false); // mobile tooltip state
+  const [showCalendly, setShowCalendly] = useState(false);
+  const [calendlyUrl, setCalendlyUrl] = useState(null);
 
   // -----------------------------
   // Config
@@ -205,7 +208,9 @@ export default function QuoteCalculator() {
 
     const base = result.calendlyUrl || CONTACT.bookingUrl;
     const url = buildCalendlyUrlWithUtm(base, result, level, frequency, bedrooms, bathrooms);
-    window.open(url, "_blank", "noopener,noreferrer");
+    // window.open(url, "_blank", "noopener,noreferrer");
+    setCalendlyUrl(url);
+    setShowCalendly(true);
   }
   // ---------- END handlers ----------
 
@@ -505,16 +510,14 @@ export default function QuoteCalculator() {
                 Call to Book — Larger Home
               </button>
             ) : (
-              <a
-                href={result.calendlyUrl || CONTACT.bookingUrl}
+              <button
+                type="button"
                 onClick={onScheduleClick}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
                 aria-label="Book online now"
               >
                 Schedule & Pay Deposit
-              </a>
+              </button>
             )}
 
             <ContactSheet
@@ -531,14 +534,19 @@ export default function QuoteCalculator() {
                 frequency,
               }}
             />
-
           </div>
 
           <p className="mt-2 text-xs text-stone-600">
             Final price confirmed after a quick walkthrough. Booking deposit fully applied to your total; refundable up to 24 hours before your appointment.
           </p>
         </div>
+
       </div>
+
+      {/* Calendly modal (if used) */}
+      {/* {showCalendly && ( */}
+      <CalendlyBooking url={calendlyUrl} isOpen={showCalendly} setOpen={setShowCalendly} />
+      {/* )} */}
     </div>
   );
 }
