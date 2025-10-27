@@ -171,29 +171,6 @@ export default function QuoteCalculator() {
     return Math.floor((sqftPerHourDeep * maxHoursPerVisit) / Math.max(0.0001, mult));
   }
 
-  // ---------- Snapshot logging + UTM builder + CTA handler ----------
-  function logQuoteSnapshot(payload) {
-    const url = "/api/quote-snapshots"; // implement this endpoint in your app
-    const data = JSON.stringify(payload);
-
-    if (navigator.sendBeacon) {
-      try {
-        const blob = new Blob([data], { type: "application/json" });
-        navigator.sendBeacon(url, blob);
-        return Promise.resolve();
-      } catch {
-        // fall through to fetch
-      }
-    }
-
-    return fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: data,
-      keepalive: true,
-    }).catch(() => { });
-  }
-
   function buildCalendlyUrlWithUtm(baseUrl, result, level, frequency, bedrooms, bathrooms) {
     // Timestamp: MM-DD-YY|HH:MM (local time)
     const now = new Date();
@@ -225,31 +202,6 @@ export default function QuoteCalculator() {
 
   async function onScheduleClick(e) {
     e.preventDefault();
-
-    // const payload = {
-    //   ts: new Date().toISOString(),
-    //   bedrooms,
-    //   bathrooms,
-    //   sqftInput: result.sqftInput,   // entered
-    //   usedSqft: result.usedSqft,     // used
-    //   level,
-    //   frequency,
-    //   pricing: {
-    //     standardRate: result.standardRate,
-    //     effectiveRate: result.effectiveRateForLevel,
-    //     base: result.base,
-    //     levelAdj: result.levelAdj,
-    //     freqDiscount: result.freqDiscount,
-    //     total: result.total,
-    //     bookingDeposit: result.bookingFee,
-    //   },
-    //   time: {
-    //     reservedWindowHours: result.reservedWindowHours,
-    //     display: result.time.displayText,
-    //     teamSize: result.time.teamSize,
-    //   },
-    //   exceedsCap: result.exceedsCap,
-    // };
 
     const base = result.calendlyUrl || CONTACT.bookingUrl;
     const url = buildCalendlyUrlWithUtm(base, result, level, frequency, bedrooms, bathrooms);
