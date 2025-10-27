@@ -9,13 +9,14 @@ export default function Header() {
   // --- Size & timing ---
   const EXPANDED_H = 288
   const COMPACT_H = 120
+  const BANNER_H = 36   // ← announcement bar height
   const TRANS_MS = 420
   const HYSTERESIS = 40
   const TOP_EXPAND_Y = 2
 
   // Collapse earlier:
   const TRIGGER_RATIO = 0.10  // 10% into hero
-  const TRIGGER_NUDGE_PX = -24   // negative = sooner
+  const TRIGGER_NUDGE_PX = -24
 
   const headerRef = useRef(null)
   const triggerYRef = useRef(0)
@@ -39,9 +40,8 @@ export default function Header() {
     computeTrigger()
 
     const onResize = () => computeTrigger()
-    window.addEventListener('resize', onResize)
-
     const onLoad = () => computeTrigger()
+    window.addEventListener('resize', onResize)
     window.addEventListener('load', onLoad)
 
     let ro
@@ -76,13 +76,10 @@ export default function Header() {
           setCompact(true)
           lockFor(TRANS_MS + 80)
         }
-
-        // Expand ONLY when we are at top
         if (compactRef.current && y <= TOP_EXPAND_Y) {
           setCompact(false)
           lockFor(TRANS_MS + 80)
         }
-
         tickingRef.current = false
       })
     }
@@ -92,8 +89,22 @@ export default function Header() {
   }, [])
 
   const height = compact ? COMPACT_H : EXPANDED_H
-  const logoHeight = Math.min(height * 0.97, 260)
+  const innerHeight = Math.max(0, height - BANNER_H) // space for logo area
+  const logoHeight = Math.min(innerHeight * 0.97, 260)
   const logoScale = compact ? 0.98 : 1
+
+  const bannerItems = [
+    'Serving: Portland • Beaverton • Tigard • Lake Oswego • Milwaukie • Vancouver (WA)',
+    'Eco-friendly, non-toxic products',
+    'Licensed & insured',
+    'Flexible weekly • bi-weekly • monthly',
+    'Same-week openings available',
+    'Booking deposit applies to your final total',
+    'Questions? Text us: (503) 893-4795',
+  ]
+
+  // Duplicate items so the marquee loops seamlessly
+  const loopItems = [...bannerItems, ...bannerItems, ...bannerItems, ...bannerItems]
 
   return (
     <header
@@ -117,22 +128,74 @@ export default function Header() {
         willChange: 'height',
         contain: 'layout paint',
       }}
-      className="sticky top-0 z-50 backdrop-blur border-b border-amber-200 flex items-center justify-center overflow-hidden"
+      className="sticky top-0 z-50 backdrop-blur border-b border-amber-200 flex flex-col overflow-hidden"
+      aria-label="Site header"
     >
-      <img
-        src={logo}
-        alt="Golden Hour Cleaning Co."
+      {/* --- Auto-scrolling announcement bar --- */}
+      <div
+        className="relative w-full border-b border-amber-200 overflow-hidden"
         style={{
-          height: `${logoHeight}px`,
-          width: 'auto',
-          transform: `scale(${logoScale})`,
-          transformOrigin: 'center',
-          transition: `transform ${TRANS_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
-          objectFit: 'contain',
-          display: 'block',
-          willChange: 'transform',
+          height: BANNER_H,
+          background: 'linear-gradient(to right, #fde68a, #a7eff1)', // subtle brand-y blend
+          maskImage:
+            'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
+          WebkitMaskImage:
+            'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)'
         }}
-      />
+        role="region"
+        aria-label="Service announcements"
+      >
+        <div
+          className="whitespace-nowrap flex items-center h-full"
+          style={{
+            animation: 'ghc-marquee 12s linear infinite',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.animationPlayState = 'paused' }}
+          onMouseLeave={(e) => { e.currentTarget.style.animationPlayState = 'running' }}
+        >
+          {loopItems.map((text, i) => (
+            <span
+              key={i}
+              className="px-6 text-sm font-medium text-slate-800"
+              style={{ lineHeight: `${BANNER_H}px` }}
+            >
+              {text}
+            </span>
+          ))}
+        </div>
+
+        {/* Reduced-motion fallback: stop animation */}
+        <style>{`
+          @keyframes ghc-marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            [aria-label="Service announcements"] > div > div {
+              animation: none !important;
+              transform: translateX(0) !important;
+            }
+          }
+        `}</style>
+      </div>
+
+      {/* --- Main logo row with Call Now button --- */}
+      <div className="relative w-full flex items-center justify-center" style={{ height: innerHeight }}>
+        <img
+          src={logo}
+          alt="Golden Hour Cleaning Co."
+          style={{
+            height: `${logoHeight}px`,
+            width: 'auto',
+            transform: `scale(${logoScale})`,
+            transformOrigin: 'center',
+            transition: `transform ${TRANS_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+            objectFit: 'contain',
+            display: 'block',
+            willChange: 'transform',
+          }}
+        />
+      </div>
     </header>
   )
 }
