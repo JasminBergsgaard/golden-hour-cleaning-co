@@ -674,7 +674,7 @@ function ContactSheet({ phone, sms, email, context }) {
       {open && (
         <div
           id="contact-sheet"
-          className="absolute right-0 z-40 mt-2 w-72 rounded-xl border border-stone-200 bg-white p-3 shadow-xl sm:w-80
+          className="absolute right-0 z-40 mt-2 w-72 max-h-[60vh] overflow-auto rounded-xl border border-stone-200 bg-white p-3 shadow-xl sm:w-80
                      md:right-auto md:left-1/2 md:-translate-x-1/2"
         >
           <div className="flex items-center justify-between">
@@ -694,19 +694,43 @@ function ContactSheet({ phone, sms, email, context }) {
           </p>
 
           <div className="mt-3 space-y-2">
-            <a href={`tel:${phone}`} className="flex items-center justify-between rounded-lg border px-3 py-2 hover:bg-stone-50">
-              <span className="text-sm text-stone-800">Call {formatPhone(phone)}</span>
-              <span className="text-xs text-stone-500">Tap to dial</span>
+            {/* Call */}
+            <a
+              href={`tel:${phone}`}
+              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
+            >
+              <div className="min-w-0">
+                <div className="text-sm text-stone-800 truncate">
+                  Call {formatPhone(phone)}
+                </div>
+              </div>
+              <span className="text-xs text-stone-500 shrink-0">Tap to dial</span>
             </a>
 
-            <a href={smsHref} className="flex items-center justify-between rounded-lg border px-3 py-2 hover:bg-stone-50">
-              <span className="text-sm text-stone-800">Text us</span>
-              <span className="text-xs text-stone-500">Opens SMS</span>
+            {/* Text */}
+            <a
+              href={smsHref}
+              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
+            >
+              <div className="min-w-0">
+                <div className="text-sm text-stone-800 truncate">Text us</div>
+                {/* optional: show a short preview of first line of message */}
+              </div>
+              <span className="text-xs text-stone-500 shrink-0">Opens SMS</span>
             </a>
 
-            <a href={mailHref} className="flex items-center justify-between rounded-lg border px-3 py-2 hover:bg-stone-50">
-              <span className="text-sm text-stone-800">Email {email}</span>
-              <span className="text-xs text-stone-500">Opens email</span>
+            {/* Email (wrap long addresses) */}
+            <a
+              href={mailHref}
+              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
+            >
+              <div className="min-w-0">
+                <div className="text-sm text-stone-800">Email</div>
+                <div className="text-xs text-stone-700 break-all">
+                  {email}
+                </div>
+              </div>
+              <span className="text-xs text-stone-500 shrink-0">Opens email</span>
             </a>
           </div>
         </div>
