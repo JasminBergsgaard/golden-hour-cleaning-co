@@ -381,7 +381,8 @@ export default function QuoteCalculator() {
             <NumberField label="Bathrooms" value={bathrooms} setValue={setBathrooms} min={1} />
           </div>
           <p className="mt-2 text-xs text-stone-500">
-            We estimate size from rooms and compare with your square footage to ensure enough time and care.
+            Select how many bedrooms and bathrooms you’d like us to care for.
+            Our system estimates total square footage from your selection so your quote reflects the right amount of time and attention.
           </p>
         </div>
 
