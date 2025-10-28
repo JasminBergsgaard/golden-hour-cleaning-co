@@ -25,6 +25,11 @@ import CalendlyBooking from "./CalendlyBooking";
  * Time estimate:
  * - Computed from productivity assumptions (1 cleaner) and shown as a range (or ~X hr if collapsed).
  * - Reserved window/CTA aligns with the greater of the chart window and the rounded-up high end.
+ * 
+ *  Rule for reserved window:
+ * - Must be >= the high end of the estimate (rounded up to whole hours).
+ * - Must be <= (high end + 1 hour).
+ * - Choose the smallest Calendly slot inside that range.
  *
  * Inputs:
  * - Bedrooms, Bathrooms, and Square Feet
@@ -37,7 +42,7 @@ export default function QuoteCalculator() {
   const [sqft, setSqft] = useState(1200);
   const [level, setLevel] = useState("deep"); // "standard" | "deep" | "move_out"
   const [frequency, setFrequency] = useState("one_time"); // "weekly" | "bi_weekly" | "monthly" | "one_time"
-  const [isLevelTipOpen, setIsLevelTipOpen] = useState(false); // mobile tooltip state
+  const [isLevelTipOpen, setIsLevelTipOpen] = useState(false);
   const [showCalendly, setShowCalendly] = useState(false);
   const [calendlyUrl, setCalendlyUrl] = useState(null);
 
@@ -50,33 +55,34 @@ export default function QuoteCalculator() {
     frequencyDiscount: { weekly: 0.18, bi_weekly: 0.12, monthly: 0.05, one_time: 0.0 },
     roomsToSqft: { base: 300, perBedroom: 400, perBathroom: 150 }, // heuristic
 
-    // Labor/time assumptions (for the displayed estimate range, 1 cleaner)
     labor: {
       sqftPerHourDeep: 400, // deep-clean productivity per cleaner (sq ft/hour)
-      teamSizeDefault: 1,   // assume ONE cleaner by default
-      variability: 0.15,    // ±15% range for real-world variance
-      minOnSiteHours: 1.0,  // don’t show below this (short visits still have overhead)
-      roundTo: 0.5,         // round displayed hours to nearest 0.5h
-      maxHoursPerVisit: 9,  // hard cap per visit for one cleaner
+      teamSizeDefault: 1,
+      variability: 0.15,    // ±15% for the range
+      minOnSiteHours: 1.0,
+      roundTo: 0.5,
+      maxHoursPerVisit: 9,
     },
 
-    // Calendly booking slots (used with the chart hours)
+    // Calendly booking slots (now includes 8h)
     bookingSlots: [
       { hours: 2, url: "https://calendly.com/golden-hour-cleaning-company/approx-2-hour-cleaning" },
       { hours: 3, url: "https://calendly.com/golden-hour-cleaning-company/approx-3-hour-cleaning" },
       { hours: 4, url: "https://calendly.com/golden-hour-cleaning-company/approx-4-hour-cleaning" },
       { hours: 6, url: "https://calendly.com/golden-hour-cleaning-company/approx-6-hour-cleaning" },
       { hours: 7, url: "https://calendly.com/golden-hour-cleaning-company/approx-7-hour-cleaning" },
+      { hours: 8, url: "https://calendly.com/golden-hour-cleaning-company/approx-8-hour-cleaning" },
       { hours: 9, url: "https://calendly.com/golden-hour-cleaning-company/approx-9-hour-cleaning" },
     ],
 
-    // Booking DEPOSIT by RESERVED HOURS (from the chart)
+    // Booking DEPOSIT by RESERVED HOURS (added 8h tier)
     bookingDepositByHours: {
       2: 50,
       3: 75,
       4: 100,
       6: 125,
       7: 150,
+      8: 175,
       9: 200,
     },
   };
@@ -87,7 +93,6 @@ export default function QuoteCalculator() {
     move_out: { name: "Move-In / Move-Out", rateLabel: "Move-In/Out rate" },
   };
 
-  // Fallback (shouldn’t be used unless something’s off)
   const CONTACT = {
     bookingUrl: "https://calendly.com/golden-hour-cleaning-company/approx-4-hour-cleaning",
     phone: "+15038934795",
@@ -95,18 +100,12 @@ export default function QuoteCalculator() {
     email: "golden.hour.cleaning.company@gmail.com",
   };
 
-  // -----------------------------
-  // Accept external level via URL param + CustomEvent
-  // -----------------------------
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
       const lv = url.searchParams.get("level");
       if (lv && ["standard", "deep", "move_out"].includes(lv)) setLevel(lv);
-    } catch {
-      /* noop */
-    }
-
+    } catch { }
     function onSetQuoteLevel(e) {
       const next = e?.detail;
       if (typeof next === "string" && ["standard", "deep", "move_out"].includes(next)) {
@@ -138,44 +137,31 @@ export default function QuoteCalculator() {
     return s.endsWith(".0") ? String(Math.round(h)) : s;
   }
   function hoursUnit(h) {
-    return Math.abs(h - 1) < 1e-9 ? "hr" : "hrs";
+    return Math.abs(h - 1) < 1e-9 ? "hour" : "hours";
   }
-
-  // SIZE CHART: usedSqft → reserved hours
-  function getHoursBySqft(sqft) {
-    if (sqft <= 700) return 2;
-    if (sqft <= 1050) return 3;
-    if (sqft <= 1400) return 4;
-    if (sqft <= 2100) return 6;
-    if (sqft <= 2450) return 7;
-    // 2451 – 3150+ → 9h (cap at 9h bucket)
-    return 9;
-  }
-
   function getDepositByHours(hours) {
     return clampCurrency(CFG.bookingDepositByHours[hours] ?? CFG.bookingDepositByHours[3]);
   }
-
   function pickCalendlySlotByHours(hours) {
     const slot = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours).find(s => s.hours === hours);
-    return slot || CFG.bookingSlots[1]; // default to 3h if exact not found
+    return slot || CFG.bookingSlots[1];
   }
-
   function nextSlotAtLeast(minHours) {
     const sorted = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
     const found = sorted.find(s => s.hours >= minHours);
-    return found ? found.hours : sorted[sorted.length - 1].hours; // cap at largest slot (9h)
+    return found ? found.hours : sorted[sorted.length - 1].hours;
   }
-
-  // Max sq ft one cleaner can handle in maxHoursPerVisit for a given level
+  function nextSlotAtMost(maxHours) {
+    const sorted = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
+    const eligible = sorted.filter(s => s.hours <= maxHours);
+    return eligible.length ? eligible[eligible.length - 1].hours : null;
+  }
   function getMaxSqftForOneCleaner(levelKey) {
     const mult = CFG.levelMultiplier[levelKey] ?? 1.0;
     const { sqftPerHourDeep, maxHoursPerVisit } = CFG.labor;
     return Math.floor((sqftPerHourDeep * maxHoursPerVisit) / Math.max(0.0001, mult));
   }
-
   function buildCalendlyUrlWithUtm(baseUrl, result, level, frequency, bedrooms, bathrooms) {
-    // Timestamp: MM-DD-YY|HH:MM (local time)
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
@@ -192,8 +178,8 @@ export default function QuoteCalculator() {
         `lvl=${level}`,
         `bd=${bedrooms}`,
         `ba=${bathrooms}`,
-        `sfEntered=${result.sqftInput}`, // user-entered sqft
-        `sfUsed=${result.usedSqft}`,     // the sqft actually used in pricing
+        `sfEntered=${result.sqftInput}`,
+        `sfUsed=${result.usedSqft}`,
         `freq=${frequency}`,
         `tot=${result.total}`,
         `ts=${ts}`,
@@ -202,17 +188,13 @@ export default function QuoteCalculator() {
 
     return `${baseUrl}?${utm.toString()}`;
   }
-
   async function onScheduleClick(e) {
     e.preventDefault();
-
     const base = result.calendlyUrl || CONTACT.bookingUrl;
     const url = buildCalendlyUrlWithUtm(base, result, level, frequency, bedrooms, bathrooms);
-    // window.open(url, "_blank", "noopener,noreferrer");
     setCalendlyUrl(url);
     setShowCalendly(true);
   }
-  // ---------- END handlers ----------
 
   // -----------------------------
   // Calculation
@@ -220,32 +202,27 @@ export default function QuoteCalculator() {
   const result = useMemo(() => {
     const safeSqftInput = Math.max(0, Number.isFinite(sqft) ? sqft : 0);
 
-    // Estimate sqft from beds/baths (heuristic)
+    // Heuristic sqft from rooms
     const estSqft =
       CFG.roomsToSqft.base +
       bedrooms * CFG.roomsToSqft.perBedroom +
       bathrooms * CFG.roomsToSqft.perBathroom;
 
-    // Use the higher of entered sqft and estimated sqft
+    // Use the higher of entered vs estimated
     const usedSqft = Math.max(safeSqftInput, estSqft);
 
-    // Rates (keep deep as anchor for totals; show base as Standard for UX)
+    // Rates
     const mult = CFG.levelMultiplier[level] ?? 1.0;
     const standardRate = CFG.deepRate * (CFG.levelMultiplier.standard ?? 0.75);
     const baseStandardRaw = usedSqft * standardRate;
 
-    // Level adjustment
     const leveledRaw = usedSqft * (CFG.deepRate * mult);
-    const levelAdjustmentRaw = leveledRaw - baseStandardRaw;
-
-    // Frequency discount after level
     const disc = CFG.frequencyDiscount[frequency] || 0;
     const discountAmountRaw = leveledRaw * disc;
-
-    // Totals
     const totalRaw = leveledRaw - discountAmountRaw;
+    const levelAdjustmentRaw = leveledRaw - baseStandardRaw;
 
-    // ---- Display time estimate (1 cleaner) ----
+    // Time estimate (1 cleaner)
     const {
       sqftPerHourDeep,
       teamSizeDefault,
@@ -257,55 +234,60 @@ export default function QuoteCalculator() {
     const personHoursRaw = (usedSqft / Math.max(1, sqftPerHourDeep)) * mult;
     const onSiteHoursRaw = personHoursRaw / Math.max(1, teamSizeDefault);
     const baseOnSite = Math.max(onSiteHoursRaw, minOnSiteHours);
+
     const rangeLow = roundTo(baseOnSite * (1 - variability), roundStep);
     const rangeHigh = roundTo(baseOnSite * (1 + variability), roundStep);
     const mid = roundTo(baseOnSite, roundStep);
 
-    // ---- SIZE CHART baseline window ----
-    const chartHours = getHoursBySqft(Math.round(usedSqft));
+    // Reservation sizing (strict >= high, <= high+1)
+    const estHighRaw = baseOnSite * (1 + variability);   // true high (unrounded)
+    const minWhole = Math.ceil(estHighRaw);              // at least this many whole hours
+    const capLimit = estHighRaw + 1;                     // at most this many hours
 
-    // ---- Align reserved window with estimate (no shorter than chart) ----
-    const estHighRoundedUp = Math.ceil(rangeHigh);
-    const minHoursNeeded = Math.max(chartHours, estHighRoundedUp);
-    const finalReservedHours = nextSlotAtLeast(minHoursNeeded);
+    const sortedSlots = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
+    const slotsInRange = sortedSlots.filter(s => s.hours >= minWhole && s.hours <= capLimit);
 
-    // ---- Deposit + Calendly from FINAL reserved hours ----
+    let finalReservedHours;
+    if (slotsInRange.length) {
+      finalReservedHours = slotsInRange[0].hours;        // smallest that fits the range
+    } else {
+      // If no exact slot fits (should be rare with 8h available), fall back to next >= minWhole
+      finalReservedHours = nextSlotAtLeast(minWhole);
+    }
+
     const bookingFeeRaw = getDepositByHours(finalReservedHours);
     const slot = pickCalendlySlotByHours(finalReservedHours);
 
-    // ---- Visit-cap check (one cleaner) ----
     const maxSqftOneCleaner = getMaxSqftForOneCleaner(level);
     const exceedsCap = usedSqft > maxSqftOneCleaner;
 
-    // ---- User-facing hours text (avoid "1.0–1.0 hrs") ----
     const sameRange = Math.abs(rangeHigh - rangeLow) < 1e-9;
     const timeDisplayText = sameRange
       ? `~${trimHours(mid)} ${hoursUnit(mid)}`
-      : `${trimHours(rangeLow)}–${trimHours(rangeHigh)} hrs`;
+      : `${trimHours(rangeLow)}–${trimHours(rangeHigh)} ${hoursUnit(rangeHigh)}`;
 
     return {
       bedrooms,
       bathrooms,
-      sqftInput: safeSqftInput,          // entered
-      estSqft: Math.round(estSqft),      // heuristic (not sent in UTM)
-      usedSqft: Math.round(usedSqft),    // used
+      sqftInput: safeSqftInput,
+      estSqft: Math.round(estSqft),
+      usedSqft: Math.round(usedSqft),
+
       deepRate: CFG.deepRate,
       standardRate,
       effectiveRateForLevel: CFG.deepRate * mult,
 
-      base: clampCurrency(baseStandardRaw),           // Base (Standard)
-      levelAdj: clampCurrency(levelAdjustmentRaw),    // ± delta from Standard
-      freqDiscount: clampCurrency(discountAmountRaw), // − delta
+      base: clampCurrency(baseStandardRaw),
+      levelAdj: clampCurrency(levelAdjustmentRaw),
+      freqDiscount: clampCurrency(discountAmountRaw),
       total: clampCurrency(totalRaw),
 
-      // From FINAL reserved hours (kept consistent with estimate)
       bookingFee: clampCurrency(bookingFeeRaw),
       reservedWindowHours: finalReservedHours,
       calendlyUrl: slot?.url || CONTACT.bookingUrl,
 
-      // Display time (1 cleaner)
       time: {
-        teamSize: teamSizeDefault, // 1
+        teamSize: teamSizeDefault,
         personHours: Math.max(personHoursRaw, minOnSiteHours * teamSizeDefault),
         onSiteHours: mid,
         onSiteRangeLow: rangeLow,
@@ -313,7 +295,6 @@ export default function QuoteCalculator() {
         displayText: timeDisplayText,
       },
 
-      // Cap info
       maxSqftOneCleaner,
       exceedsCap,
     };
@@ -330,7 +311,7 @@ export default function QuoteCalculator() {
           Transparent pricing with eco-friendly supplies and gentle care.
         </p>
 
-        {/* Inputs: Beds/Baths & Square Feet */}
+        {/* Inputs */}
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border p-4">
             <label className="font-medium text-stone-800">Bedrooms & Bathrooms</label>
@@ -348,7 +329,6 @@ export default function QuoteCalculator() {
             <label className="font-medium text-stone-800">Square Feet</label>
             <div className="mt-4">
               <NumberField label="Total Sq Ft" value={sqft} setValue={setSqft} min={0} step={50} />
-              {/* DYNAMIC rate copy based on selected level */}
               <p className="mt-1 text-xs text-stone-500">
                 {LEVEL_COPY[level]?.rateLabel || "Selected level rate"}: $
                 {result.effectiveRateForLevel.toFixed(2)} per sq ft.
@@ -364,7 +344,6 @@ export default function QuoteCalculator() {
         {/* Level & Frequency */}
         <div className="mt-6 rounded-2xl border p-4 relative">
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            {/* LEVEL with mobile-friendly tooltip */}
             <div className="relative group">
               <label className="text-stone-700 flex items-center gap-2">
                 Level
@@ -413,7 +392,6 @@ export default function QuoteCalculator() {
               )}
             </div>
 
-            {/* FREQUENCY */}
             <SelectField
               label="Frequency"
               value={frequency}
@@ -462,12 +440,12 @@ export default function QuoteCalculator() {
                 <div className="text-xs text-stone-600">Estimated total</div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-stone-700">Booking deposit (based on size chart & time estimate)</div>
+                <div className="text-sm text-stone-700">Booking deposit (based on reserved window)</div>
                 <div className="text-lg font-medium tabular-nums">{formatCurrency(result.bookingFee)}</div>
               </div>
             </div>
 
-            {/* Time estimate + reserved window (hide when over cap; fixed alignment) */}
+            {/* Time estimate + reserved window */}
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
               {!result.exceedsCap && (
                 <>
@@ -478,9 +456,9 @@ export default function QuoteCalculator() {
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-stone-600">
-                    We’ll reserve a{" "}
+                    We’ll reserve an{" "}
                     <span className="font-medium">
-                      {result.reservedWindowHours} {result.reservedWindowHours === 1 ? "hour" : "hours"}
+                      {result.reservedWindowHours} {hoursUnit(result.reservedWindowHours)}
                     </span>{" "}
                     window to ensure enough time.
                   </div>
@@ -499,7 +477,7 @@ export default function QuoteCalculator() {
               )}
             </div>
 
-            {/* Dual CTA row with dynamic Calendly link (or call if over cap) */}
+            {/* Dual CTA */}
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {result.exceedsCap ? (
                 <button
@@ -541,21 +519,15 @@ export default function QuoteCalculator() {
               Final price confirmed after a quick walkthrough. Booking deposit fully applied to your total; refundable up to 24 hours before your appointment.
             </p>
           </div>
-
         </div>
 
-        {/* Calendly modal (if used) */}
-        {/* {showCalendly && ( */}
+        {/* Calendly modal */}
         <CalendlyBooking url={calendlyUrl} isOpen={showCalendly} setOpen={setShowCalendly} />
-        {/* )} */}
       </div>
     </div>
   );
 }
 
-// -----------------------------
-// Reusable inputs
-// -----------------------------
 function NumberField({ label, value, setValue, min = 0, step = 1 }) {
   return (
     <label className="block text-sm">
@@ -656,11 +628,7 @@ function ContactSheet({ phone, sms, email, context }) {
           </p>
 
           <div className="mt-3 space-y-2">
-            {/* Call */}
-            <a
-              href={`tel:${phone}`}
-              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
-            >
+            <a href={`tel:${phone}`} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
               <div className="min-w-0">
                 <div className="text-sm text-stone-800 truncate">
                   Call {formatPhone(phone)}
@@ -669,23 +637,14 @@ function ContactSheet({ phone, sms, email, context }) {
               <span className="text-xs text-stone-500 shrink-0">Tap to dial</span>
             </a>
 
-            {/* Text */}
-            <a
-              href={smsHref}
-              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
-            >
+            <a href={smsHref} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
               <div className="min-w-0">
                 <div className="text-sm text-stone-800 truncate">Text us</div>
-                {/* optional: show a short preview of first line of message */}
               </div>
               <span className="text-xs text-stone-500 shrink-0">Opens SMS</span>
             </a>
 
-            {/* Email (wrap long addresses) */}
-            <a
-              href={mailHref}
-              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
-            >
+            <a href={mailHref} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
               <div className="min-w-0">
                 <div className="text-sm text-stone-800">Email</div>
                 <div className="text-xs text-stone-700 break-all">
