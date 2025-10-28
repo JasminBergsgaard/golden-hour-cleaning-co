@@ -3,7 +3,7 @@ import hero from '../assets/gh-cleaning-hero.jpg';
 
 export default function Hero() {
   return (
-    <section id="hero" className="relative overflow-hidden">
+    <section id="hero" className="relative overflow-hidden pt-16">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-100 via-amber-50 to-transparent" />
       <div className="relative mx-auto max-w-6xl px-4 pt-4 md:pt-6 pb-16 md:pb-24">
         <div className="grid md:grid-cols-2 gap-10 items-center">

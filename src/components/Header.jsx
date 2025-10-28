@@ -3,7 +3,6 @@ import logo from '../assets/Golden Hour - rectangle.svg'
 
 export default function Header() {
   const [compact, setCompact] = useState(false)
-  const [open, setOpen] = useState(false)
   const compactRef = useRef(compact)
   compactRef.current = compact
 
@@ -22,9 +21,6 @@ export default function Header() {
   const triggerYRef = useRef(0)
   const tickingRef = useRef(false)
   const lockedRef = useRef(false)
-
-  const contactWrapRef = useRef(null)
-  const firstActionRef = useRef(null)
 
   const computeTrigger = () => {
     const hero = document.querySelector('#hero')
@@ -91,35 +87,14 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // --- Popover: close on outside click / Esc; focus first action when opening
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (!open) return
-      if (contactWrapRef.current && !contactWrapRef.current.contains(e.target)) {
-        setOpen(false)
-      }
-    }
-    const onKey = (e) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDocClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (open && firstActionRef.current) {
-      firstActionRef.current.focus()
-    }
-  }, [open])
-
   const height = compact ? COMPACT_H : EXPANDED_H
   const innerHeight = Math.max(0, height - BANNER_H)
   const logoHeight = Math.min(innerHeight * 0.97, 260)
   const logoScale = compact ? 0.98 : 1
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--header-height', `${height}px`)
+  }, [height])
 
   const bannerItems = [
     'Serving: Portland • Beaverton • Tigard • Lake Oswego • Milwaukie • Vancouver (WA)',
@@ -152,8 +127,11 @@ export default function Header() {
         boxShadow: compact ? '0 2px 12px rgba(0,0,0,0.08)' : 'none',
         willChange: 'height',
         contain: 'layout paint',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100000,
       }}
-      className="sticky top-0 z-50 backdrop-blur border-b border-amber-200 flex flex-col overflow-hidden"
+      className="backdrop-blur border-b border-amber-200 flex flex-col overflow-hidden"
       aria-label="Site header"
     >
       {/* --- Announcement bar --- */}
@@ -224,82 +202,8 @@ export default function Header() {
         />
 
         {/* --- Contact popover trigger & panel (right, under marquee) --- */}
-        <div
-          ref={contactWrapRef}
-          className="absolute"
-          onClick={(e) => e.stopPropagation()} // prevent header scroll-to-hero
-          style={{
-            top: 12,
-            right: 20,
-            zIndex: 70, // over the logo
-          }}
-        >
-          {/* Trigger button */}
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={open ? 'true' : 'false'}
-            aria-controls="contact-popover"
-            onClick={() => setOpen((v) => !v)}
-            className="px-5 md:px-6 h-11 md:h-12 rounded-full bg-amber-400 text-slate-900 font-semibold shadow-lg border border-amber-300 hover:shadow-xl active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-300"
-            style={{
-              transform: `scale(${compact ? 0.92 : 1})`,
-              transition: `transform ${TRANS_MS}ms cubic-bezier(0.16,1,0.3,1), box-shadow 200ms ease`,
-            }}
-          >
-            Contact
-          </button>
 
-          {/* Popover */}
-          {open && (
-            <div
-              id="contact-popover"
-              role="dialog"
-              aria-label="Contact options"
-              aria-modal="false"
-              className="absolute mt-2 w-[220px] rounded-xl border border-amber-200 bg-white/95 backdrop-blur p-2 shadow-xl"
-              style={{
-                right: 0, // align to right edge of trigger
-              }}
-            >
-              {/* caret/arrow */}
-              <div
-                aria-hidden
-                className="absolute -top-2 right-6 h-0 w-0"
-                style={{
-                  borderLeft: '8px solid transparent',
-                  borderRight: '8px solid transparent',
-                  borderBottom: '8px solid rgba(255,255,255,0.95)',
-                  filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.08))',
-                }}
-              />
-
-              <div className="flex flex-col gap-2">
-                <a
-                  ref={firstActionRef}
-                  href="tel:+15038934795"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 font-semibold text-slate-900 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                >
-                  <span>📞 Call</span>
-                </a>
-
-                <a
-                  href="sms:+15038934795"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 font-semibold text-slate-900 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                >
-                  <span>💬 Text</span>
-                </a>
-                <a
-                  href="mailto:golden.hour.cleaning.company@gmail.com"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 font-semibold text-slate-900 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                >
-                  <span>✉️ Email</span>
-                </a>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-    </header>
+    </header >
   )
 }

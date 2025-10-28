@@ -320,233 +320,235 @@ export default function QuoteCalculator() {
   }, [bedrooms, bathrooms, sqft, level, frequency]);
 
   return (
-    <div
-      id="quote"
-      className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-6 shadow-sm md:p-8"
-    >
-      <h2 className="font-serif text-2xl md:text-3xl">Get a Quote</h2>
-      <p className="mt-1 text-stone-600">
-        Transparent pricing with eco-friendly supplies and gentle care.
-      </p>
+    <div className='pt-10'>
+      <div
+        id="quote"
+        className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-6 shadow-sm md:p-8 pt-14"
+      >
+        <h2 className="font-serif text-2xl md:text-3xl">Get a Quote</h2>
+        <p className="mt-1 text-stone-600">
+          Transparent pricing with eco-friendly supplies and gentle care.
+        </p>
 
-      {/* Inputs: Beds/Baths & Square Feet */}
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border p-4">
-          <label className="font-medium text-stone-800">Bedrooms & Bathrooms</label>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            <NumberField label="Bedrooms" value={bedrooms} setValue={setBedrooms} min={0} />
-            <NumberField label="Bathrooms" value={bathrooms} setValue={setBathrooms} min={1} />
-          </div>
-          <p className="mt-2 text-xs text-stone-500">
-            Select how many bedrooms and bathrooms you’d like us to care for.
-            Our system estimates total square footage from your selection so your quote reflects the right amount of time and attention.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border p-4">
-          <label className="font-medium text-stone-800">Square Feet</label>
-          <div className="mt-4">
-            <NumberField label="Total Sq Ft" value={sqft} setValue={setSqft} min={0} step={50} />
-            {/* DYNAMIC rate copy based on selected level */}
-            <p className="mt-1 text-xs text-stone-500">
-              {LEVEL_COPY[level]?.rateLabel || "Selected level rate"}: $
-              {result.effectiveRateForLevel.toFixed(2)} per sq ft.
-            </p>
-            <p className="mt-1 text-xs text-stone-500">
-              Using <span className="font-medium">{result.usedSqft.toLocaleString()} sq ft</span> (higher of entered{" "}
-              {result.sqftInput.toLocaleString()} and estimated {result.estSqft.toLocaleString()} based on Bedrooms & Bathrooms selection).
+        {/* Inputs: Beds/Baths & Square Feet */}
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border p-4">
+            <label className="font-medium text-stone-800">Bedrooms & Bathrooms</label>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <NumberField label="Bedrooms" value={bedrooms} setValue={setBedrooms} min={0} />
+              <NumberField label="Bathrooms" value={bathrooms} setValue={setBathrooms} min={1} />
+            </div>
+            <p className="mt-2 text-xs text-stone-500">
+              Select how many bedrooms and bathrooms you’d like us to care for.
+              Our system estimates total square footage from your selection so your quote reflects the right amount of time and attention.
             </p>
           </div>
+
+          <div className="rounded-2xl border p-4">
+            <label className="font-medium text-stone-800">Square Feet</label>
+            <div className="mt-4">
+              <NumberField label="Total Sq Ft" value={sqft} setValue={setSqft} min={0} step={50} />
+              {/* DYNAMIC rate copy based on selected level */}
+              <p className="mt-1 text-xs text-stone-500">
+                {LEVEL_COPY[level]?.rateLabel || "Selected level rate"}: $
+                {result.effectiveRateForLevel.toFixed(2)} per sq ft.
+              </p>
+              <p className="mt-1 text-xs text-stone-500">
+                Using <span className="font-medium">{result.usedSqft.toLocaleString()} sq ft</span> (higher of entered{" "}
+                {result.sqftInput.toLocaleString()} and estimated {result.estSqft.toLocaleString()} based on Bedrooms & Bathrooms selection).
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Level & Frequency */}
-      <div className="mt-6 rounded-2xl border p-4 relative">
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-          {/* LEVEL with mobile-friendly tooltip */}
-          <div className="relative group">
-            <label className="text-stone-700 flex items-center gap-2">
-              Level
-              <button
-                type="button"
-                aria-label="More info about levels"
-                onClick={() => setIsLevelTipOpen((s) => !s)}
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-stone-700 text-xs hover:bg-stone-300 md:pointer-events-none md:cursor-default"
-              >
-                ?
-              </button>
-              <div className="pointer-events-none absolute left-1/2 top-full z-10 hidden -translate-x-1/2 md:block">
-                <div className="mt-1 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg bg-stone-900 px-3 py-2 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-                  View the “Services” section below for details on what each service level includes.
-                </div>
-              </div>
-            </label>
-
-            <SelectField
-              value={level}
-              setValue={setLevel}
-              options={[
-                { value: "standard", label: "Standard Refresh (~$0.26/sq ft)" },
-                { value: "deep", label: "Deep Glow (Deep Clean) ($0.35/sq ft)" },
-                { value: "move_out", label: "Move-In / Move-Out (~$0.46/sq ft)" },
-              ]}
-            />
-            {isLevelTipOpen && (
-              <div className="md:hidden fixed inset-x-4 bottom-4 z-50">
-                <div className="rounded-xl bg-stone-900 px-4 py-3 text-xs text-white shadow-2xl">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="pr-2">
-                      View the <span className="italic">Services</span> section below for details on what each service level includes.
-                    </p>
-                    <button
-                      type="button"
-                      aria-label="Close tooltip"
-                      onClick={() => setIsLevelTipOpen(false)}
-                      className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded bg-stone-700/60 text-white"
-                    >
-                      ✕
-                    </button>
+        {/* Level & Frequency */}
+        <div className="mt-6 rounded-2xl border p-4 relative">
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            {/* LEVEL with mobile-friendly tooltip */}
+            <div className="relative group">
+              <label className="text-stone-700 flex items-center gap-2">
+                Level
+                <button
+                  type="button"
+                  aria-label="More info about levels"
+                  onClick={() => setIsLevelTipOpen((s) => !s)}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-stone-700 text-xs hover:bg-stone-300 md:pointer-events-none md:cursor-default"
+                >
+                  ?
+                </button>
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 hidden -translate-x-1/2 md:block">
+                  <div className="mt-1 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg bg-stone-900 px-3 py-2 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+                    View the “Services” section below for details on what each service level includes.
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              </label>
 
-          {/* FREQUENCY */}
-          <SelectField
-            label="Frequency"
-            value={frequency}
-            setValue={setFrequency}
-            options={[
-              { value: "one_time", label: "One-time" },
-              { value: "monthly", label: "Monthly (−5%)" },
-              { value: "bi_weekly", label: "Bi-weekly (−12%)" },
-              { value: "weekly", label: "Weekly (−18%)" },
-            ]}
-          />
-        </div>
-
-        <p className="mt-2 text-xs text-stone-500">
-          Current effective rate for this level: ${result.effectiveRateForLevel.toFixed(3)}/sq ft
-        </p>
-      </div>
-
-      {/* Summary */}
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border p-4">
-          <label className="font-medium text-stone-800">Breakdown</label>
-          <ul className="mt-3 space-y-1 text-sm text-stone-700">
-            <li className="flex justify-between">
-              <span>
-                Base (Standard): {result.usedSqft.toLocaleString()} sq ft × ${result.standardRate.toFixed(2)}/sq ft
-              </span>
-              <span className="tabular-nums">${result.base}</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Level adjustment</span>
-              <span className="tabular-nums">{formatSigned(result.levelAdj)}</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Frequency discount</span>
-              <span className="tabular-nums">−${result.freqDiscount}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="rounded-2xl border p-4 bg-amber-50/60">
-          <label className="font-medium text-stone-800">Your quote</label>
-          <div className="mt-3 flex items-end justify-between">
-            <div>
-              <div className="text-4xl font-semibold tabular-nums">{formatCurrency(result.total)}</div>
-              <div className="text-xs text-stone-600">Estimated total</div>
+              <SelectField
+                value={level}
+                setValue={setLevel}
+                options={[
+                  { value: "standard", label: "Standard Refresh (~$0.26/sq ft)" },
+                  { value: "deep", label: "Deep Glow (Deep Clean) ($0.35/sq ft)" },
+                  { value: "move_out", label: "Move-In / Move-Out (~$0.46/sq ft)" },
+                ]}
+              />
+              {isLevelTipOpen && (
+                <div className="md:hidden fixed inset-x-4 bottom-4 z-50">
+                  <div className="rounded-xl bg-stone-900 px-4 py-3 text-xs text-white shadow-2xl">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="pr-2">
+                        View the <span className="italic">Services</span> section below for details on what each service level includes.
+                      </p>
+                      <button
+                        type="button"
+                        aria-label="Close tooltip"
+                        onClick={() => setIsLevelTipOpen(false)}
+                        className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded bg-stone-700/60 text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-sm text-stone-700">Booking deposit (based on size chart & time estimate)</div>
-              <div className="text-lg font-medium tabular-nums">{formatCurrency(result.bookingFee)}</div>
-            </div>
-          </div>
 
-          {/* Time estimate + reserved window (hide when over cap; fixed alignment) */}
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-            {!result.exceedsCap && (
-              <>
-                <div className="text-sm text-stone-800">
-                  Estimated time on site (1 cleaner):{" "}
-                  <span className="font-medium tabular-nums">
-                    {result.time.displayText}
-                  </span>
-                </div>
-                <div className="mt-1 text-xs text-stone-600">
-                  We’ll reserve a{" "}
-                  <span className="font-medium">
-                    {result.reservedWindowHours} {result.reservedWindowHours === 1 ? "hour" : "hours"}
-                  </span>{" "}
-                  window to ensure enough time.
-                </div>
-                <div className="mt-1 text-sm text-stone-800">
-                  We may add a second cleaner to finish sooner if needed — price unchanged; only duration changes.
-                </div>
-              </>
-            )}
-
-            {result.exceedsCap && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                For one cleaner, our maximum per visit at this service level is{" "}
-                <span className="font-semibold">{result.maxSqftOneCleaner.toLocaleString()} sq ft</span>.{" "}
-                This looks larger — please call or text us to schedule a longer or multi-cleaner visit.
-              </div>
-            )}
-          </div>
-
-          {/* Dual CTA row with dynamic Calendly link (or call if over cap) */}
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {result.exceedsCap ? (
-              <button
-                type="button"
-                onClick={() => window.open(`tel:${CONTACT.phone.replace(/[^\d+]/g, "")}`, "_self")}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
-                aria-label="Call to book — larger home"
-              >
-                Call to Book — Larger Home
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onScheduleClick}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
-                aria-label="Book online now"
-              >
-                Schedule & Pay Deposit
-              </button>
-            )}
-
-            <ContactSheet
-              phone={CONTACT.phone}
-              sms={CONTACT.sms}
-              email={CONTACT.email}
-              context={{
-                level,
-                sqft: result.usedSqft,
-                sqftInput: result.sqftInput,
-                bedrooms,
-                bathrooms,
-                total: result.total,
-                frequency,
-              }}
+            {/* FREQUENCY */}
+            <SelectField
+              label="Frequency"
+              value={frequency}
+              setValue={setFrequency}
+              options={[
+                { value: "one_time", label: "One-time" },
+                { value: "monthly", label: "Monthly (−5%)" },
+                { value: "bi_weekly", label: "Bi-weekly (−12%)" },
+                { value: "weekly", label: "Weekly (−18%)" },
+              ]}
             />
           </div>
 
-          <p className="mt-2 text-xs text-stone-600">
-            Final price confirmed after a quick walkthrough. Booking deposit fully applied to your total; refundable up to 24 hours before your appointment.
+          <p className="mt-2 text-xs text-stone-500">
+            Current effective rate for this level: ${result.effectiveRateForLevel.toFixed(3)}/sq ft
           </p>
         </div>
 
-      </div>
+        {/* Summary */}
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border p-4">
+            <label className="font-medium text-stone-800">Breakdown</label>
+            <ul className="mt-3 space-y-1 text-sm text-stone-700">
+              <li className="flex justify-between">
+                <span>
+                  Base (Standard): {result.usedSqft.toLocaleString()} sq ft × ${result.standardRate.toFixed(2)}/sq ft
+                </span>
+                <span className="tabular-nums">${result.base}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Level adjustment</span>
+                <span className="tabular-nums">{formatSigned(result.levelAdj)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Frequency discount</span>
+                <span className="tabular-nums">−${result.freqDiscount}</span>
+              </li>
+            </ul>
+          </div>
 
-      {/* Calendly modal (if used) */}
-      {/* {showCalendly && ( */}
-      <CalendlyBooking url={calendlyUrl} isOpen={showCalendly} setOpen={setShowCalendly} />
-      {/* )} */}
+          <div className="rounded-2xl border p-4 bg-amber-50/60">
+            <label className="font-medium text-stone-800">Your quote</label>
+            <div className="mt-3 flex items-end justify-between">
+              <div>
+                <div className="text-4xl font-semibold tabular-nums">{formatCurrency(result.total)}</div>
+                <div className="text-xs text-stone-600">Estimated total</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-stone-700">Booking deposit (based on size chart & time estimate)</div>
+                <div className="text-lg font-medium tabular-nums">{formatCurrency(result.bookingFee)}</div>
+              </div>
+            </div>
+
+            {/* Time estimate + reserved window (hide when over cap; fixed alignment) */}
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+              {!result.exceedsCap && (
+                <>
+                  <div className="text-sm text-stone-800">
+                    Estimated time on site (1 cleaner):{" "}
+                    <span className="font-medium tabular-nums">
+                      {result.time.displayText}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-stone-600">
+                    We’ll reserve a{" "}
+                    <span className="font-medium">
+                      {result.reservedWindowHours} {result.reservedWindowHours === 1 ? "hour" : "hours"}
+                    </span>{" "}
+                    window to ensure enough time.
+                  </div>
+                  <div className="mt-1 text-sm text-stone-800">
+                    We may add a second cleaner to finish sooner if needed — price unchanged; only duration changes.
+                  </div>
+                </>
+              )}
+
+              {result.exceedsCap && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  For one cleaner, our maximum per visit at this service level is{" "}
+                  <span className="font-semibold">{result.maxSqftOneCleaner.toLocaleString()} sq ft</span>.{" "}
+                  This looks larger — please call or text us to schedule a longer or multi-cleaner visit.
+                </div>
+              )}
+            </div>
+
+            {/* Dual CTA row with dynamic Calendly link (or call if over cap) */}
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {result.exceedsCap ? (
+                <button
+                  type="button"
+                  onClick={() => window.open(`tel:${CONTACT.phone.replace(/[^\d+]/g, "")}`, "_self")}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
+                  aria-label="Call to book — larger home"
+                >
+                  Call to Book — Larger Home
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onScheduleClick}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
+                  aria-label="Book online now"
+                >
+                  Schedule & Pay Deposit
+                </button>
+              )}
+
+              <ContactSheet
+                phone={CONTACT.phone}
+                sms={CONTACT.sms}
+                email={CONTACT.email}
+                context={{
+                  level,
+                  sqft: result.usedSqft,
+                  sqftInput: result.sqftInput,
+                  bedrooms,
+                  bathrooms,
+                  total: result.total,
+                  frequency,
+                }}
+              />
+            </div>
+
+            <p className="mt-2 text-xs text-stone-600">
+              Final price confirmed after a quick walkthrough. Booking deposit fully applied to your total; refundable up to 24 hours before your appointment.
+            </p>
+          </div>
+
+        </div>
+
+        {/* Calendly modal (if used) */}
+        {/* {showCalendly && ( */}
+        <CalendlyBooking url={calendlyUrl} isOpen={showCalendly} setOpen={setShowCalendly} />
+        {/* )} */}
+      </div>
     </div>
   );
 }
