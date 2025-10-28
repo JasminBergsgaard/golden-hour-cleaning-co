@@ -7,7 +7,10 @@ export default function Footer() {
           <h3 className="font-lora text-xl font-semibold">Golden Hour Cleaning Co.</h3>
           <p className="mt-2 text-sm text-amber-800/80 leading-relaxed">
             Meticulous care, mindful presence, and eco-friendly products —
-            restoring the harmony of your home, one clean at a time.
+            restoring harmony in your home, one clean at a time.
+            Golden Hour Cleaning Co is licensed in the State of Oregon and carries
+            general liability coverage up to $1 million.
+            Certificates of insurance available upon request.
           </p>
         </div>
 

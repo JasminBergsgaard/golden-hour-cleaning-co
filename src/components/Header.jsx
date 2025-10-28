@@ -97,7 +97,7 @@ export default function Header() {
   }, [height])
 
   const bannerItems = [
-    'Serving: Portland • Beaverton • Tigard • Lake Oswego • Milwaukie • Vancouver (WA)',
+    'Serving: Portland • Beaverton • Tigard • Lake Oswego • West Linn • Milwaukie • Tualatin',
     'Eco-friendly, non-toxic products',
     'Licensed & insured',
     'Flexible weekly • bi-weekly • monthly',
@@ -200,9 +200,6 @@ export default function Header() {
             willChange: 'transform',
           }}
         />
-
-        {/* --- Contact popover trigger & panel (right, under marquee) --- */}
-
       </div>
     </header >
   )
