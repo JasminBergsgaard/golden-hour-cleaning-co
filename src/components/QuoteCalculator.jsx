@@ -45,14 +45,14 @@ import { buildCalendlyUrlWithUtm } from "../helpers/calendlyHelpers";
  * - GOLDENWELCOME = $50 off Deep Clean only; applied to estimated total (not deposit)
  */
 
-export default function QuoteCalculator() {
+export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);
   const [sqft, setSqft] = useState(1200);
   const [level, setLevel] = useState("deep"); // "standard" | "deep" | "move_out"
   const [frequency, setFrequency] = useState("one_time"); // "weekly" | "bi_weekly" | "monthly" | "one_time"
   const [isLevelTipOpen, setIsLevelTipOpen] = useState(false);
-  const [showCalendly, setShowCalendly] = useState(false);
+  // const [showCalendly, setShowCalendly] = useState(false);
   const [calendlyUrl, setCalendlyUrl] = useState(null);
 
   // Promo code state
