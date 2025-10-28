@@ -99,8 +99,8 @@ export default function Header() {
     'Licensed & insured',
     'Flexible weekly • bi-weekly • monthly',
     'Same-week openings available',
-    'Booking deposit applies to your final total',
-    'Questions? Text us: (503) 893-4795',
+    'Easy online booking',
+    'Questions? Call or Text us: (503) 893-4795',
   ]
 
   // Duplicate items so the marquee loops seamlessly
@@ -136,24 +136,27 @@ export default function Header() {
         className="relative w-full border-b border-amber-200 overflow-hidden"
         style={{
           height: BANNER_H,
-          background: 'linear-gradient(to right, #fde68a, #a7eff1)', // subtle brand-y blend
+          background: 'linear-gradient(to right, #fde68a, #a7eff1)',
           maskImage:
             'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
           WebkitMaskImage:
-            'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)'
+            'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
         }}
         role="region"
         aria-label="Service announcements"
       >
         <div
-          className="whitespace-nowrap flex items-center h-full"
           style={{
-            animation: 'ghc-marquee 12s linear infinite',
+            display: 'inline-flex',
+            minWidth: 'max-content',
+            height: '100%',
+            alignItems: 'center',
+            animation: 'ghc-marquee 30s linear infinite',
           }}
           onMouseEnter={(e) => { e.currentTarget.style.animationPlayState = 'paused' }}
           onMouseLeave={(e) => { e.currentTarget.style.animationPlayState = 'running' }}
         >
-          {loopItems.map((text, i) => (
+          {[...bannerItems, ...bannerItems].map((text, i) => (
             <span
               key={i}
               className="px-6 text-sm font-medium text-slate-800"
@@ -164,20 +167,20 @@ export default function Header() {
           ))}
         </div>
 
-        {/* Reduced-motion fallback: stop animation */}
         <style>{`
-          @keyframes ghc-marquee {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-          }
-          @media (prefers-reduced-motion: reduce) {
-            [aria-label="Service announcements"] > div > div {
-              animation: none !important;
-              transform: translateX(0) !important;
-            }
-          }
-        `}</style>
+    @keyframes ghc-marquee {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); } /* move by half the strip (2 copies) */
+    }
+    @media (prefers-reduced-motion: reduce) {
+      [aria-label="Service announcements"] > div {
+        animation: none !important;
+        transform: translateX(0) !important;
+      }
+    }
+  `}</style>
       </div>
+
 
       {/* --- Main logo row with Call Now button --- */}
       <div className="relative w-full flex items-center justify-center" style={{ height: innerHeight }}>
