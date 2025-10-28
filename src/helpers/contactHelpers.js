@@ -11,3 +11,8 @@ export function buildSmsLink({ phone, message }) {
 export function buildMailto({ email, subject, body }) {
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
+
+export function formatPhone(e164) {
+  const m = (e164 || "").replace(/[^\d]/g, "").match(/^1?(\d{3})(\d{3})(\d{4})$/);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
+}

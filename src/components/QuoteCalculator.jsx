@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { formatCurrency, buildMailto, buildSmsLink } from "../helpers/contactHelpers";
+import { formatCurrency } from "../helpers/contactHelpers";
 import CalendlyBooking from "./CalendlyBooking";
+import ContactSheet from "./ContactSheet";
+import SelectField from "./Fields/SelectField";
+import NumberField from "./Fields/NumberField";
+import { CFG, CONTACT, LEVEL_COPY } from '../constants';
+import { buildCalendlyUrlWithUtm } from "../helpers/calendlyHelpers";
+
 
 /**
  * Golden Hour Cleaning Co. — Quote Calculator (JS)
@@ -53,65 +59,6 @@ export default function QuoteCalculator() {
   const [promoCode, setPromoCode] = useState("");
   const [promoValid, setPromoValid] = useState(false);
   const [promoError, setPromoError] = useState(null);
-
-  // -----------------------------
-  // Config
-  // -----------------------------
-  const CFG = {
-    deepRate: 0.35, // $/sq ft (anchor)
-    levelMultiplier: { standard: 0.75, deep: 1.0, move_out: 1.3 },
-    frequencyDiscount: { weekly: 0.18, bi_weekly: 0.12, monthly: 0.05, one_time: 0.0 },
-    roomsToSqft: { base: 300, perBedroom: 400, perBathroom: 150 }, // heuristic
-
-    labor: {
-      sqftPerHourDeep: 400, // deep-clean productivity per cleaner (sq ft/hour)
-      teamSizeDefault: 1,
-      variability: 0.15,    // ±15% for the range
-      minOnSiteHours: 1.0,
-      roundTo: 0.5,
-      maxHoursPerVisit: 9,
-    },
-
-    // Calendly booking slots (now includes 8h)
-    bookingSlots: [
-      { hours: 2, url: "https://calendly.com/golden-hour-cleaning-company/approx-2-hour-cleaning" },
-      { hours: 3, url: "https://calendly.com/golden-hour-cleaning-company/approx-3-hour-cleaning" },
-      { hours: 4, url: "https://calendly.com/golden-hour-cleaning-company/approx-4-hour-cleaning" },
-      { hours: 6, url: "https://calendly.com/golden-hour-cleaning-company/approx-6-hour-cleaning" },
-      { hours: 7, url: "https://calendly.com/golden-hour-cleaning-company/approx-7-hour-cleaning" },
-      { hours: 8, url: "https://calendly.com/golden-hour-cleaning-company/approx-8-hour-cleaning" },
-      { hours: 9, url: "https://calendly.com/golden-hour-cleaning-company/approx-9-hour-cleaning" },
-    ],
-
-    // Booking DEPOSIT by RESERVED HOURS (added 8h tier)
-    bookingDepositByHours: {
-      2: 50,
-      3: 75,
-      4: 100,
-      6: 125,
-      7: 150,
-      8: 175,
-      9: 200,
-    },
-
-    // Promo config
-    promos: {
-      GOLDENWELCOME: { amount: 50, level: "deep" },
-    },
-  };
-
-  const LEVEL_COPY = {
-    standard: { name: "Standard Refresh", rateLabel: "Standard rate" },
-    deep: { name: "Deep Glow (Deep Clean)", rateLabel: "Deep Clean rate" },
-    move_out: { name: "Move-In / Move-Out", rateLabel: "Move-In/Out rate" },
-  };
-
-  const CONTACT = {
-    bookingUrl: "https://calendly.com/golden-hour-cleaning-company/approx-4-hour-cleaning",
-    phone: "+15038934795",
-    sms: "+15038934795",
-    email: "golden.hour.cleaning.company@gmail.com",
-  };
 
   // Read ?level= from URL and listen for external "setQuoteLevel"
   useEffect(() => {
@@ -193,45 +140,12 @@ export default function QuoteCalculator() {
     const found = sorted.find(s => s.hours >= minHours);
     return found ? found.hours : sorted[sorted.length - 1].hours;
   }
-  function nextSlotAtMost(maxHours) {
-    const sorted = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
-    const eligible = sorted.filter(s => s.hours <= maxHours);
-    return eligible.length ? eligible[eligible.length - 1].hours : null;
-  }
   function getMaxSqftForOneCleaner(levelKey) {
     const mult = CFG.levelMultiplier[levelKey] ?? 1.0;
     const { sqftPerHourDeep, maxHoursPerVisit } = CFG.labor;
     return Math.floor((sqftPerHourDeep * maxHoursPerVisit) / Math.max(0.0001, mult));
   }
-  function buildCalendlyUrlWithUtm(baseUrl, result, level, frequency, bedrooms, bathrooms, promo) {
-    const now = new Date();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const yy = String(now.getFullYear()).slice(-2);
-    const hh = String(now.getHours()).padStart(2, "0");
-    const min = String(now.getMinutes()).padStart(2, "0");
-    const ts = `${mm}-${dd}-${yy}|${hh}:${min}`;
 
-    const utm = new URLSearchParams({
-      utm_source: "quote_calculator",
-      utm_medium: "website",
-      utm_campaign: "cleaning_quote",
-      utm_content: [
-        `lvl=${level}`,
-        `bd=${bedrooms}`,
-        `ba=${bathrooms}`,
-        `sfEntered=${result.sqftInput}`,
-        `sfUsed=${result.usedSqft}`,
-        `freq=${frequency}`,
-        `promo=${promo.applied ? promo.code : "none"}`,
-        `promoAmt=${promo.applied ? promo.amount : 0}`,
-        `tot=${result.totalAfterPromo}`,
-        `ts=${ts}`,
-      ].join("_"),
-    });
-
-    return `${baseUrl}?${utm.toString()}`;
-  }
   async function onScheduleClick(e) {
     e.preventDefault();
     const base = result.calendlyUrl || CONTACT.bookingUrl;
@@ -615,142 +529,4 @@ export default function QuoteCalculator() {
       </div>
     </div>
   );
-}
-
-function NumberField({ label, value, setValue, min = 0, step = 1 }) {
-  return (
-    <label className="block text-sm">
-      <span className="text-stone-700">{label}</span>
-      <input
-        type="number"
-        min={min}
-        step={step}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => setValue(parseInt(e.target.value || "0"))}
-        className="mt-1 w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-300"
-      />
-    </label>
-  );
-}
-
-function SelectField({ label, value, setValue, options }) {
-  return (
-    <label className="block text-sm">
-      {label && <span className="text-stone-700">{label}</span>}
-      <select
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className="mt-1 w-full rounded-xl border bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-300"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function ContactSheet({ phone, sms, email, context }) {
-  const [open, setOpen] = useState(false);
-
-  const levelLabel =
-    context.level === "standard" ? "Standard Refresh" :
-      context.level === "move_out" ? "Move-In / Move-Out" : "Deep Glow";
-
-  const humanFreq =
-    context.frequency === "weekly" ? "Weekly" :
-      context.frequency === "bi_weekly" ? "Bi-weekly" :
-        context.frequency === "monthly" ? "Monthly" : "One-time";
-
-  const summary =
-    `Hello Golden Hour — I have a question about my quote.\n` +
-    `Service: ${levelLabel}\n` +
-    `Bedrooms: ${context.bedrooms}\n` +
-    `Bathrooms: ${context.bathrooms}\n` +
-    `Square footage entered: ${context.sqftInput.toLocaleString()} sq ft\n` +
-    `Square footage used for quote: ${context.sqft.toLocaleString()} sq ft\n` +
-    `Cleaning frequency: ${humanFreq}\n` +
-    `${context.promo ? `Promo applied: ${context.promo.code} (−${formatCurrency(context.promo.amount)})\n` : ""}` +
-    `Estimated total: ${formatCurrency(context.total)}\n\n` +
-    `My question: `;
-
-  const smsHref = buildSmsLink({ phone: sms, message: summary });
-  const mailHref = buildMailto({
-    email,
-    subject: `Question about my quote — ${levelLabel}`,
-    body: summary,
-  });
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((s) => !s)}
-        aria-expanded={open}
-        aria-controls="contact-sheet"
-        className="inline-flex w-full items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-3 text-stone-900 hover:bg-stone-50"
-      >
-        Questions? Call / Text / Email
-      </button>
-
-      {open && (
-        <div
-          id="contact-sheet"
-          className="absolute right-0 z-40 mt-2 w-72 max-h:[60vh] overflow-auto rounded-xl border border-stone-200 bg-white p-3 shadow-xl sm:w-80
-                     md:right-auto md:left-1/2 md:-translate-x-1/2"
-        >
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-stone-800">Contact us</div>
-            <button
-              type="button"
-              aria-label="Close contact options"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-2 py-1 text-stone-500 hover:bg-stone-100"
-            >
-              ✕
-            </button>
-          </div>
-
-          <p className="mt-1 text-xs text-stone-600">
-            We’ll receive your quote details so we can help fast.
-          </p>
-
-          <div className="mt-3 space-y-2">
-            <a href={`tel:${phone}`} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
-              <div className="min-w-0">
-                <div className="text-sm text-stone-800 truncate">
-                  Call {formatPhone(phone)}
-                </div>
-              </div>
-              <span className="text-xs text-stone-500 shrink-0">Tap to dial</span>
-            </a>
-
-            <a href={smsHref} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
-              <div className="min-w-0">
-                <div className="text-sm text-stone-800 truncate">Text us</div>
-              </div>
-              <span className="text-xs text-stone-500 shrink-0">Opens SMS</span>
-            </a>
-
-            <a href={mailHref} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
-              <div className="min-w-0">
-                <div className="text-sm text-stone-800">Email</div>
-                <div className="text-xs text-stone-700 break-all">
-                  {email}
-                </div>
-              </div>
-              <span className="text-xs text-stone-500 shrink-0">Opens email</span>
-            </a>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function formatPhone(e164) {
-  const m = (e164 || "").replace(/[^\d]/g, "").match(/^1?(\d{3})(\d{3})(\d{4})$/);
-  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
 }
