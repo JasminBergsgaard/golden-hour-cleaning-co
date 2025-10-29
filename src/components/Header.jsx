@@ -98,7 +98,7 @@ export default function Header() {
 
   const bannerItems = [
     'Serving: Portland • Beaverton • Tigard • Lake Oswego • West Linn • Milwaukie • Tualatin',
-    'Eco-friendly, non-toxic products',
+    'We use eco-friendly, non-toxic products',
     'Licensed & insured',
     'Flexible weekly • bi-weekly • monthly',
     'Same-week openings available',

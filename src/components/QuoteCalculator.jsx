@@ -52,7 +52,6 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
   const [level, setLevel] = useState("deep"); // "standard" | "deep" | "move_out"
   const [frequency, setFrequency] = useState("one_time"); // "weekly" | "bi_weekly" | "monthly" | "one_time"
   const [isLevelTipOpen, setIsLevelTipOpen] = useState(false);
-  // const [showCalendly, setShowCalendly] = useState(false);
   const [calendlyUrl, setCalendlyUrl] = useState(null);
 
   // Promo code state
@@ -442,7 +441,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
                 <div className="text-xs text-stone-600">Estimated total</div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-stone-700">Booking deposit (based on reserved window)</div>
+                <div className="text-sm text-stone-700">Booking deposit (based on size chart & time estimate)</div>
                 <div className="text-lg font-medium tabular-nums">{formatCurrency(result.bookingFee)}</div>
               </div>
             </div>
