@@ -5,7 +5,7 @@ export const CFG = {
   roomsToSqft: { base: 300, perBedroom: 400, perBathroom: 150 }, // heuristic
 
   labor: {
-    sqftPerHourDeep: 400, // deep-clean productivity per cleaner (sq ft/hour)
+    sqftPerHourDeep: 500, // deep-clean productivity per cleaner (sq ft/hour)
     teamSizeDefault: 1,
     variability: 0.15,    // ±15% for the range
     minOnSiteHours: 1.0,
