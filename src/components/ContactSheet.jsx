@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { formatCurrency, buildMailto, buildSmsLink } from "../helpers/contactHelpers";
-import { formatPhone } from '../helpers/contactHelpers';
+import { formatCurrency, buildMailto, buildSmsLink, formatPhone } from '../helpers/contactHelpers';
 
 export default function ContactSheet({ phone, sms, email, context }) {
   const [open, setOpen] = useState(false);
