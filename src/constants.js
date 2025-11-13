@@ -1,10 +1,7 @@
 export const CFG = {
-  deepRate: 0.35, // $/sq ft (anchor)
-  levelMultiplier: { standard: 0.75, deep: 1.0, move_out: 1.3 },
   frequencyDiscount: { weekly: 0.18, bi_weekly: 0.12, monthly: 0.05, one_time: 0.0 },
   roomsToSqft: { base: 300, perBedroom: 400, perBathroom: 150 }, // heuristic
 
-  // Calendly booking slots (now includes 8h)
   bookingSlots: [
     { hours: 2, url: "https://calendly.com/golden-hour-cleaning-company/approx-2-hour-cleaning" },
     { hours: 3, url: "https://calendly.com/golden-hour-cleaning-company/approx-3-hour-cleaning" },

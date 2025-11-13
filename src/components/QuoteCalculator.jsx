@@ -78,10 +78,6 @@ function roundTo(n, step = 0.5) {
   return Math.round(n / step) * step;
 }
 
-function roundUpTo(n, step = 0.5) {
-  return Math.ceil(n / step) * step;
-}
-
 function trimHours(h) {
   const s = h.toFixed(1);
   return s.endsWith(".0") ? String(Math.round(h)) : s;
@@ -104,7 +100,12 @@ function pickCalendlySlotAtLeast(minHours) {
   return found || sorted[sorted.length - 1];
 }
 
-export default function QuoteCalculator({ showCalendly, setShowCalendly, title, subtitle }) {
+export default function QuoteCalculator({
+  showCalendly,
+  setShowCalendly,
+  title,
+  subtitle,
+}) {
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);
   const [sqft, setSqft] = useState(1800);
@@ -212,7 +213,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
     // Higher hours (slower pace) uses MIN_SQFT_PER_HOUR
     let hoursHighOneCleanerRaw = (usedSqft / MIN_SQFT_PER_HOUR) * cleanMult;
 
-    // Enforce a minimum visit length
+    // Enforce a minimum visit length for very small spaces
     if (hoursHighOneCleanerRaw < MIN_VISIT_HOURS_ONE_CLEANER) {
       hoursHighOneCleanerRaw = MIN_VISIT_HOURS_ONE_CLEANER;
     }
@@ -240,21 +241,18 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
         onSiteRangeHigh
       )}`;
 
-    // Billing hours: LOW & HIGH (total person-hours, 1-cleaner perspective)
-    const personHoursLowRaw = hoursLowOneCleanerRaw;
-    const personHoursHighRaw = hoursHighOneCleanerRaw;
-
-    const personHoursLow = roundTo(personHoursLowRaw, 0.5);
-    const personHoursHigh = roundUpTo(personHoursHighRaw, 0.5); // conservative upper bound
+    // …then derive total billable hours from on-site time × cleaners
+    const billableHoursLow = onSiteRangeLow * cleaners;
+    const billableHoursHigh = onSiteRangeHigh * cleaners;
 
     // Labor pricing LOW
-    const baseLaborLowRaw = personHoursLow * HOURLY_RATE;
+    const baseLaborLowRaw = billableHoursLow * HOURLY_RATE;
     const disc = CFG.frequencyDiscount[frequency] || 0;
     const freqDiscountLowRaw = baseLaborLowRaw * disc;
     const subtotalLowAfterFreq = baseLaborLowRaw - freqDiscountLowRaw;
 
     // Labor pricing HIGH
-    const baseLaborHighRaw = personHoursHigh * HOURLY_RATE;
+    const baseLaborHighRaw = billableHoursHigh * HOURLY_RATE;
     const freqDiscountHighRaw = baseLaborHighRaw * disc;
     const subtotalHighAfterFreq = baseLaborHighRaw - freqDiscountHighRaw;
 
@@ -275,7 +273,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
     const totalAfterPromoHigh = clampCurrency(totalBeforePromoHighRaw - promoDiscountHigh);
 
     // Booking / Calendly window: use upper end of on-site time per cleaner
-    const minReservedHoursPerCleaner = Math.ceil(onSiteRangeHighRaw);
+    const minReservedHoursPerCleaner = Math.ceil(onSiteRangeHigh);
     const slot = pickCalendlySlotAtLeast(minReservedHoursPerCleaner);
     const reservedWindowHours = slot.hours;
     const bookingFeeRaw = getDepositByOnSiteHours(reservedWindowHours);
@@ -288,8 +286,8 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
       usedSqft: Math.round(usedSqft),
 
       hourlyRate: HOURLY_RATE,
-      billableHoursLow: personHoursLow,
-      billableHours: personHoursHigh, // high end
+      billableHoursLow,
+      billableHours: billableHoursHigh, // high end
 
       // Use HIGH-end values in the detailed breakdown (most conservative)
       baseLabor: clampCurrency(baseLaborHighRaw),
@@ -469,8 +467,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
                 </label>
               </div>
               <p className="mt-1 text-[11px] text-stone-500">
-                Default for Golden Hour cleanings. Uncheck if you prefer conventional
-                products.
+                Eco is our Golden Hour standard. Uncheck if you prefer conventional supplies.
               </p>
             </div>
 
@@ -571,7 +568,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
               </div>
               <div className="text-right">
                 <div className="text-sm text-stone-700">
-                  Booking deposit (based on time window)
+                  Booking deposit <small>(applied to your final total)</small>
                 </div>
                 <div className="text-lg font-medium tabular-nums">
                   {formatCurrency(result.bookingFee)}
@@ -602,8 +599,8 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
                 arrival window to ensure enough time.
               </div>
               <div className="mt-1 text-xs text-stone-600">
-                Larger jobs are completed with two cleaners so your visit finishes
-                sooner — your price is based on total hours, not how many people are
+                Larger jobs may be completed with two cleaners so your visit finishes
+                sooner — your price is based on total cleaning hours, not how many people are
                 on-site.
               </div>
             </div>
@@ -648,7 +645,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly, title, 
             </div>
 
             <p className="mt-2 text-xs text-stone-600">
-              Final price is confirmed after a quick walkthrough. Booking deposit is
+              Final price is confirmed after a quick in-person walkthrough. Booking deposit is
               fully applied to your total and refundable up to 24 hours before your
               appointment.
             </p>
