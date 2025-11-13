@@ -104,7 +104,7 @@ function pickCalendlySlotAtLeast(minHours) {
   return found || sorted[sorted.length - 1];
 }
 
-export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
+export default function QuoteCalculator({ showCalendly, setShowCalendly, title, subtitle }) {
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);
   const [sqft, setSqft] = useState(1800);
@@ -326,10 +326,8 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
         id="quote"
         className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-6 shadow-sm md:p-8 pt-14"
       >
-        <h2 className="font-serif text-2xl md:text-3xl">Get a Quote</h2>
-        <p className="mt-1 text-stone-600">
-          Transparent hourly pricing with eco-friendly supplies and gentle care.
-        </p>
+        <h2 className="font-serif text-2xl md:text-3xl">{title}</h2>
+        <p className="mt-1 text-stone-600">{subtitle}</p>
 
         {/* Inputs */}
         <div className="mt-6 grid gap-4 md:grid-cols-2">

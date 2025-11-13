@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { CalendarCheck2, BadgeCheck, ShieldCheck, Leaf, Stars } from "lucide-react";
+import QuoteCalculator from './QuoteCalculator';
 
 /**
  * Golden Hour Cleaning Co. — Landing Page (React + Tailwind)
@@ -9,7 +10,7 @@ import { CalendarCheck2, BadgeCheck, ShieldCheck, Leaf, Stars } from "lucide-rea
  * to the #quote-calculator section where your quote widget or Calendly embed lives.
  */
 
-export default function InstantBookLanding() {
+export default function InstantBookLanding({ showCalendly, setShowCalendly }) {
   const scrollToQuote = () => {
     const el = document.querySelector("#quote-calculator");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -176,17 +177,7 @@ export default function InstantBookLanding() {
 
       {/* QUOTE CALCULATOR MOUNT (placeholder) */}
       <section id="quote-calculator" className="mx-auto max-w-7xl px-6 py-16">
-        <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Instant Quote & Booking</h4>
-          <p className="mt-1 text-sm text-stone-600">Start below to see your price and reserve an exact time on our calendar.</p>
-          <div className="mt-6">
-            <div className="grid place-items-center rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
-              <CalendarCheck2 className="mb-3 h-6 w-6" />
-              <p>Embed your <strong>Quote Calculator</strong> or <strong>Calendly widget</strong> here.</p>
-              <p className="text-xs mt-2">This is a placeholder with id="#quote-calculator" for smooth scrolling.</p>
-            </div>
-          </div>
-        </div>
+        <QuoteCalculator showCalendly={showCalendly} setShowCalendly={setShowCalendly} title="Instant Quote & Booking" subtitle="Start below to see your price and reserve an exact time on our calendar." />
       </section>
     </div>
   );

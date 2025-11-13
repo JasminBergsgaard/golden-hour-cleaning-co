@@ -28,7 +28,7 @@ export default function App() {
                 style={{ scrollPaddingTop: 'var(--header-height, 120px)' }}
               >
                 <Hero />
-                <QuoteCalculator showCalendly={showCalendly} setShowCalendly={setShowCalendly} />
+                <QuoteCalculator showCalendly={showCalendly} setShowCalendly={setShowCalendly} title="Get a Quote" subtitle="Transparent hourly pricing with eco-friendly supplies and gentle care." />
                 <Services />
               </main>
 
@@ -38,7 +38,7 @@ export default function App() {
         />
 
         {/* Google Ads Landing Page */}
-        <Route path="/instant-booking" element={<InstantBookLanding />} />
+        <Route path="/instant-booking" element={<InstantBookLanding showCalendly={showCalendly} setShowCalendly={setShowCalendly} />} />
 
         {/* Optional fallback */}
         <Route path="*" element={
