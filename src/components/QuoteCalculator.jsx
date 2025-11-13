@@ -4,38 +4,41 @@ import CalendlyBooking from "./CalendlyBooking";
 import ContactSheet from "./ContactSheet";
 import SelectField from "./Fields/SelectField";
 import NumberField from "./Fields/NumberField";
-import { CFG, CONTACT, LEVEL_COPY } from '../constants';
+import { CFG, CONTACT } from "../constants";
 import { buildCalendlyUrlWithUtm } from "../helpers/calendlyHelpers";
 
-
 /**
- * Golden Hour Cleaning Co. — Quote Calculator (JS)
+ * Golden Hour Cleaning Co. — Quote Calculator (Hourly)
  *
  * Pricing:
- * - Deep Clean (anchor): $0.35 / sq ft
- * - Standard: 25% lower (× 0.75)
- * - Move-In/Out: 30% higher (× 1.30)
- * - Frequency discounts (after level): weekly 18%, bi-weekly 12%, monthly 5%, one-time 0%
+ * - Single hourly rate: $75 / hour
+ * - Eco-friendly products: +15% (multiplier) — default ON
+ * - Clean Types (scope, not rate, but affect time needed):
+ *    - Standard  (faster than Deep)
+ *    - Deep      (baseline: 2000 sq ft → 6–8 hours)
+ *    - Move-In / Move-Out (slower than Deep)
  *
- * Booking deposit:
- * - Based on the SIZE CHART (used sqft → reserved hours → deposit amount), but never less
- *   than the rounded-up high end of the estimated time range (snapped to {2,3,4,6,7,9}).
- *   Chart:
- *     0–700 → 2h → $50
- *     701–1050 → 3h → $75
- *     1051–1400 → 4h → $100
- *     1401–2100 → 6h → $125
- *     2101–2450 → 7h → $150
- *     2451–3150+ → 9h → $200
+ * Time model:
+ * - Base productivity for DEEP CLEAN:
+ *   - 2000 sq ft → 6–8 hours for 1 cleaner
+ *   - 1000 sq ft → 3–4 hours for 1 cleaner
+ *   ⇒ ~250–333 sq ft/hour per cleaner
  *
- * Time estimate:
- * - Computed from productivity assumptions (1 cleaner) and shown as a range (or ~X hr if collapsed).
- * - Reserved window/CTA aligns with the greater of the chart window and the rounded-up high end.
- * 
- *  Rule for reserved window:
- * - Must be >= the high end of the estimate (rounded up to whole hours).
- * - Must be <= (high end + 1 hour).
- * - Choose the smallest Calendly slot inside that range.
+ * - We estimate hours from:
+ *    - Bedrooms, bathrooms, and entered square footage
+ *    - Clean type multiplier (deep = baseline, others adjust around it)
+ * - Time is shown as a range; price is also shown as a corresponding range.
+ *
+ * Team size:
+ * - If the high-end estimate for 1 cleaner is > 8 hours,
+ *   we assign 2 cleaners and cut the on-site window roughly in half.
+ * - Total person-hours (and price) stay the same; only duration changes.
+ *
+ * Frequency discounts (applied to labor before eco upcharge):
+ * - weekly: 18%
+ * - bi-weekly: 12%
+ * - monthly: 5%
+ * - one-time: 0%
  *
  * Inputs:
  * - Bedrooms, Bathrooms, and Square Feet
@@ -45,12 +48,69 @@ import { buildCalendlyUrlWithUtm } from "../helpers/calendlyHelpers";
  * - GOLDENWELCOME = $50 off Deep Clean only; applied to estimated total (not deposit)
  */
 
+const HOURLY_RATE = 75;
+const ECO_MULTIPLIER = 1.15; // 15% upcharge
+
+// Productivity: sq ft per hour per cleaner (for DEEP clean baseline)
+const MIN_SQFT_PER_HOUR = 250;  // slower pace → more hours (upper end of time)
+const MAX_SQFT_PER_HOUR = 333;  // faster pace → fewer hours (lower end of time)
+
+// Minimum visit length for 1 cleaner (in hours)
+const MIN_VISIT_HOURS_ONE_CLEANER = 2;
+
+// Deep is baseline (1.0). Standard is faster; Move-Out is slower.
+const CLEAN_TYPE_MULTIPLIER = {
+  standard: 0.8, // ~20% less time than deep
+  deep: 1.0,     // baseline: 2000 sq ft → 6–8 hours
+  move_out: 1.3, // ~30% more time than deep
+};
+
+function clampCurrency(n) {
+  return Math.max(0, Math.round(n));
+}
+
+function formatSigned(amount) {
+  const sign = amount >= 0 ? "+" : "−";
+  return `${sign}$${Math.abs(amount)}`;
+}
+
+function roundTo(n, step = 0.5) {
+  return Math.round(n / step) * step;
+}
+
+function roundUpTo(n, step = 0.5) {
+  return Math.ceil(n / step) * step;
+}
+
+function trimHours(h) {
+  const s = h.toFixed(1);
+  return s.endsWith(".0") ? String(Math.round(h)) : s;
+}
+
+function hoursUnit(h) {
+  return Math.abs(h - 1) < 1e-9 ? "hour" : "hours";
+}
+
+function getDepositByOnSiteHours(onSiteHours) {
+  if (onSiteHours <= 3) return 50;
+  if (onSiteHours <= 5) return 75;
+  if (onSiteHours <= 6) return 100;
+  return 125;
+}
+
+function pickCalendlySlotAtLeast(minHours) {
+  const sorted = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
+  const found = sorted.find((s) => s.hours >= minHours);
+  return found || sorted[sorted.length - 1];
+}
+
 export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);
-  const [sqft, setSqft] = useState(1200);
-  const [level, setLevel] = useState("deep"); // "standard" | "deep" | "move_out"
+  const [sqft, setSqft] = useState(1800);
+  const [cleanType, setCleanType] = useState("deep"); // "standard" | "deep" | "move_out"
   const [frequency, setFrequency] = useState("one_time"); // "weekly" | "bi_weekly" | "monthly" | "one_time"
+  const [ecoProducts, setEcoProducts] = useState(true); // default selected
   const [isLevelTipOpen, setIsLevelTipOpen] = useState(false);
   const [calendlyUrl, setCalendlyUrl] = useState(null);
 
@@ -60,16 +120,17 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
   const [promoError, setPromoError] = useState(null);
 
   // Read ?level= from URL and listen for external "setQuoteLevel"
+  // (We still call it "level" for compatibility, but it now maps to cleanType.)
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
       const lv = url.searchParams.get("level");
-      if (lv && ["standard", "deep", "move_out"].includes(lv)) setLevel(lv);
+      if (lv && ["standard", "deep", "move_out"].includes(lv)) setCleanType(lv);
     } catch { }
     function onSetQuoteLevel(e) {
       const next = e?.detail;
       if (typeof next === "string" && ["standard", "deep", "move_out"].includes(next)) {
-        setLevel(next);
+        setCleanType(next);
         setIsLevelTipOpen(false);
         const el = document.getElementById("quote");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -97,7 +158,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
     }
 
     const rule = CFG.promos[code];
-    if (rule.level && rule.level !== level) {
+    if (rule.level && rule.level !== cleanType) {
       setPromoValid(false);
       setPromoError("This code only applies to a Deep Clean.");
       return;
@@ -105,45 +166,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
 
     setPromoValid(true);
     setPromoError(null);
-  }, [promoCode, level]);
-
-  // -----------------------------
-  // Helpers
-  // -----------------------------
-  function clampCurrency(n) {
-    return Math.max(0, Math.round(n));
-  }
-  function formatSigned(amount) {
-    const sign = amount >= 0 ? "+" : "−";
-    return `${sign}$${Math.abs(amount)}`;
-  }
-  function roundTo(n, step = 0.5) {
-    return Math.round(n / step) * step;
-  }
-  function trimHours(h) {
-    const s = h.toFixed(1);
-    return s.endsWith(".0") ? String(Math.round(h)) : s;
-  }
-  function hoursUnit(h) {
-    return Math.abs(h - 1) < 1e-9 ? "hour" : "hours";
-  }
-  function getDepositByHours(hours) {
-    return clampCurrency(CFG.bookingDepositByHours[hours] ?? CFG.bookingDepositByHours[3]);
-  }
-  function pickCalendlySlotByHours(hours) {
-    const slot = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours).find(s => s.hours === hours);
-    return slot || CFG.bookingSlots[1];
-  }
-  function nextSlotAtLeast(minHours) {
-    const sorted = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
-    const found = sorted.find(s => s.hours >= minHours);
-    return found ? found.hours : sorted[sorted.length - 1].hours;
-  }
-  function getMaxSqftForOneCleaner(levelKey) {
-    const mult = CFG.levelMultiplier[levelKey] ?? 1.0;
-    const { sqftPerHourDeep, maxHoursPerVisit } = CFG.labor;
-    return Math.floor((sqftPerHourDeep * maxHoursPerVisit) / Math.max(0.0001, mult));
-  }
+  }, [promoCode, cleanType]);
 
   async function onScheduleClick(e) {
     e.preventDefault();
@@ -151,11 +174,15 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
     const url = buildCalendlyUrlWithUtm(
       base,
       result,
-      level,
+      cleanType,
       frequency,
       bedrooms,
       bathrooms,
-      { applied: promoValid, code: promoCode.trim().toUpperCase(), amount: promoValid ? 50 : 0 }
+      {
+        applied: promoValid,
+        code: promoCode.trim().toUpperCase(),
+        amount: promoValid ? 50 : 0,
+      }
     );
     setCalendlyUrl(url);
     setShowCalendly(true);
@@ -176,64 +203,82 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
     // Use the higher of entered vs estimated
     const usedSqft = Math.max(safeSqftInput, estSqft);
 
-    // Rates
-    const mult = CFG.levelMultiplier[level] ?? 1.0;
-    const standardRate = CFG.deepRate * (CFG.levelMultiplier.standard ?? 0.75);
-    const baseStandardRaw = usedSqft * standardRate;
+    // Clean type multiplier (deep/move-out take more time)
+    const cleanMult = CLEAN_TYPE_MULTIPLIER[cleanType] ?? 1.0;
 
-    const leveledRaw = usedSqft * (CFG.deepRate * mult);
-    const disc = CFG.frequencyDiscount[frequency] || 0;
-    const discountAmountRaw = leveledRaw * disc;
-    const totalRaw = leveledRaw - discountAmountRaw;
-    const levelAdjustmentRaw = leveledRaw - baseStandardRaw;
+    // --- Time range for ONE cleaner (person-hours) based on productivity band ---
+    // Lower hours (faster pace) uses MAX_SQFT_PER_HOUR
+    let hoursLowOneCleanerRaw = (usedSqft / MAX_SQFT_PER_HOUR) * cleanMult;
+    // Higher hours (slower pace) uses MIN_SQFT_PER_HOUR
+    let hoursHighOneCleanerRaw = (usedSqft / MIN_SQFT_PER_HOUR) * cleanMult;
 
-    // Time estimate (1 cleaner)
-    const {
-      sqftPerHourDeep,
-      teamSizeDefault,
-      variability,
-      minOnSiteHours,
-      roundTo: roundStep,
-    } = CFG.labor;
-
-    const personHoursRaw = (usedSqft / Math.max(1, sqftPerHourDeep)) * mult;
-    const onSiteHoursRaw = personHoursRaw / Math.max(1, teamSizeDefault);
-    const baseOnSite = Math.max(onSiteHoursRaw, minOnSiteHours);
-
-    const rangeLow = roundTo(baseOnSite * (1 - variability), roundStep);
-    const rangeHigh = roundTo(baseOnSite * (1 + variability), roundStep);
-    const mid = roundTo(baseOnSite, roundStep);
-
-    // Reservation sizing (strict >= high, <= high+1)
-    const estHighRaw = baseOnSite * (1 + variability);   // true high (unrounded)
-    const minWhole = Math.ceil(estHighRaw);              // at least this many whole hours
-    const capLimit = estHighRaw + 1;                     // at most this many hours
-
-    const sortedSlots = [...CFG.bookingSlots].sort((a, b) => a.hours - b.hours);
-    const slotsInRange = sortedSlots.filter(s => s.hours >= minWhole && s.hours <= capLimit);
-
-    let finalReservedHours;
-    if (slotsInRange.length) {
-      finalReservedHours = slotsInRange[0].hours;        // smallest that fits the range
-    } else {
-      // If no exact slot fits (should be rare with 8h available), fall back to next >= minWhole
-      finalReservedHours = nextSlotAtLeast(minWhole);
+    // Enforce a minimum visit length
+    if (hoursHighOneCleanerRaw < MIN_VISIT_HOURS_ONE_CLEANER) {
+      hoursHighOneCleanerRaw = MIN_VISIT_HOURS_ONE_CLEANER;
+    }
+    if (hoursLowOneCleanerRaw < MIN_VISIT_HOURS_ONE_CLEANER) {
+      hoursLowOneCleanerRaw = MIN_VISIT_HOURS_ONE_CLEANER;
+    }
+    if (hoursLowOneCleanerRaw > hoursHighOneCleanerRaw) {
+      hoursLowOneCleanerRaw = hoursHighOneCleanerRaw;
     }
 
-    const bookingFeeRaw = getDepositByHours(finalReservedHours);
-    const slot = pickCalendlySlotByHours(finalReservedHours);
+    // Decide team size based on the HIGH end for 1 cleaner
+    const cleaners = hoursHighOneCleanerRaw > 8 ? 2 : 1;
 
-    const maxSqftOneCleaner = getMaxSqftForOneCleaner(level);
-    const exceedsCap = usedSqft > maxSqftOneCleaner;
+    // On-site time per cleaner (divide total person-hours by cleaners)
+    const onSiteRangeLowRaw = hoursLowOneCleanerRaw / cleaners;
+    const onSiteRangeHighRaw = hoursHighOneCleanerRaw / cleaners;
 
-    const sameRange = Math.abs(rangeHigh - rangeLow) < 1e-9;
+    const onSiteRangeLow = roundTo(onSiteRangeLowRaw, 0.5);
+    const onSiteRangeHigh = roundTo(onSiteRangeHighRaw, 0.5);
+
+    const sameRange = Math.abs(onSiteRangeHigh - onSiteRangeLow) < 0.26; // ~quarter hour
     const timeDisplayText = sameRange
-      ? `~${trimHours(mid)} ${hoursUnit(mid)}`
-      : `${trimHours(rangeLow)}–${trimHours(rangeHigh)} ${hoursUnit(rangeHigh)}`;
+      ? `~${trimHours(onSiteRangeHigh)} ${hoursUnit(onSiteRangeHigh)}`
+      : `${trimHours(onSiteRangeLow)}–${trimHours(onSiteRangeHigh)} ${hoursUnit(
+        onSiteRangeHigh
+      )}`;
+
+    // Billing hours: LOW & HIGH (total person-hours, 1-cleaner perspective)
+    const personHoursLowRaw = hoursLowOneCleanerRaw;
+    const personHoursHighRaw = hoursHighOneCleanerRaw;
+
+    const personHoursLow = roundTo(personHoursLowRaw, 0.5);
+    const personHoursHigh = roundUpTo(personHoursHighRaw, 0.5); // conservative upper bound
+
+    // Labor pricing LOW
+    const baseLaborLowRaw = personHoursLow * HOURLY_RATE;
+    const disc = CFG.frequencyDiscount[frequency] || 0;
+    const freqDiscountLowRaw = baseLaborLowRaw * disc;
+    const subtotalLowAfterFreq = baseLaborLowRaw - freqDiscountLowRaw;
+
+    // Labor pricing HIGH
+    const baseLaborHighRaw = personHoursHigh * HOURLY_RATE;
+    const freqDiscountHighRaw = baseLaborHighRaw * disc;
+    const subtotalHighAfterFreq = baseLaborHighRaw - freqDiscountHighRaw;
+
+    // Eco upcharge
+    const ecoMultiplier = ecoProducts ? ECO_MULTIPLIER : 1;
+
+    const totalBeforePromoLowRaw = subtotalLowAfterFreq * ecoMultiplier;
+    const ecoUpchargeLowRaw = totalBeforePromoLowRaw - subtotalLowAfterFreq;
+
+    const totalBeforePromoHighRaw = subtotalHighAfterFreq * ecoMultiplier;
+    const ecoUpchargeHighRaw = totalBeforePromoHighRaw - subtotalHighAfterFreq;
 
     // Promo (client-side): $50 off Deep Clean only
-    const promoDiscount = promoValid ? 50 : 0;
-    const totalAfterPromo = clampCurrency(totalRaw - promoDiscount);
+    const promoDiscountLow = promoValid ? 50 : 0;
+    const promoDiscountHigh = promoValid ? 50 : 0;
+
+    const totalAfterPromoLow = clampCurrency(totalBeforePromoLowRaw - promoDiscountLow);
+    const totalAfterPromoHigh = clampCurrency(totalBeforePromoHighRaw - promoDiscountHigh);
+
+    // Booking / Calendly window: use upper end of on-site time per cleaner
+    const minReservedHoursPerCleaner = Math.ceil(onSiteRangeHighRaw);
+    const slot = pickCalendlySlotAtLeast(minReservedHoursPerCleaner);
+    const reservedWindowHours = slot.hours;
+    const bookingFeeRaw = getDepositByOnSiteHours(reservedWindowHours);
 
     return {
       bedrooms,
@@ -242,45 +287,48 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
       estSqft: Math.round(estSqft),
       usedSqft: Math.round(usedSqft),
 
-      deepRate: CFG.deepRate,
-      standardRate,
-      effectiveRateForLevel: CFG.deepRate * mult,
+      hourlyRate: HOURLY_RATE,
+      billableHoursLow: personHoursLow,
+      billableHours: personHoursHigh, // high end
 
-      base: clampCurrency(baseStandardRaw),
-      levelAdj: clampCurrency(levelAdjustmentRaw),
-      freqDiscount: clampCurrency(discountAmountRaw),
-      total: clampCurrency(totalRaw),
+      // Use HIGH-end values in the detailed breakdown (most conservative)
+      baseLabor: clampCurrency(baseLaborHighRaw),
+      freqDiscount: clampCurrency(freqDiscountHighRaw),
+      ecoUpcharge: clampCurrency(ecoUpchargeHighRaw),
+      total: clampCurrency(totalBeforePromoHighRaw),
 
-      promoDiscount: clampCurrency(promoDiscount),
-      totalAfterPromo,
+      promoDiscount: clampCurrency(promoDiscountHigh),
+
+      // Range totals for display
+      totalAfterPromoLow,
+      totalAfterPromo: totalAfterPromoHigh, // keep name for compatibility
 
       bookingFee: clampCurrency(bookingFeeRaw),
-      reservedWindowHours: finalReservedHours,
+      reservedWindowHours,
       calendlyUrl: slot?.url || CONTACT.bookingUrl,
 
       time: {
-        teamSize: teamSizeDefault,
-        personHours: Math.max(personHoursRaw, minOnSiteHours * teamSizeDefault),
-        onSiteHours: mid,
-        onSiteRangeLow: rangeLow,
-        onSiteRangeHigh: rangeHigh,
+        cleaners,
+        onSiteRangeLow,
+        onSiteRangeHigh,
         displayText: timeDisplayText,
       },
 
-      maxSqftOneCleaner,
-      exceedsCap,
+      cleanType,
+      ecoProducts,
+      frequency,
     };
-  }, [bedrooms, bathrooms, sqft, level, frequency, promoValid]);
+  }, [bedrooms, bathrooms, sqft, cleanType, frequency, ecoProducts, promoValid]);
 
   return (
-    <div className='pt-10'>
+    <div className="pt-10">
       <div
         id="quote"
         className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-6 shadow-sm md:p-8 pt-14"
       >
         <h2 className="font-serif text-2xl md:text-3xl">Get a Quote</h2>
         <p className="mt-1 text-stone-600">
-          Transparent pricing with eco-friendly supplies and gentle care.
+          Transparent hourly pricing with eco-friendly supplies and gentle care.
         </p>
 
         {/* Inputs */}
@@ -288,40 +336,65 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
           <div className="rounded-2xl border p-4">
             <label className="font-medium text-stone-800">Bedrooms & Bathrooms</label>
             <div className="mt-4 grid grid-cols-2 gap-4">
-              <NumberField label="Bedrooms" value={bedrooms} setValue={setBedrooms} min={0} />
-              <NumberField label="Bathrooms" value={bathrooms} setValue={setBathrooms} min={1} />
+              <NumberField
+                label="Bedrooms"
+                value={bedrooms}
+                setValue={setBedrooms}
+                min={0}
+              />
+              <NumberField
+                label="Bathrooms"
+                value={bathrooms}
+                setValue={setBathrooms}
+                min={1}
+              />
             </div>
             <p className="mt-2 text-xs text-stone-500">
               Select how many bedrooms and bathrooms you’d like us to care for.
-              Our system estimates total square footage from your selection so your quote reflects the right amount of time and attention.
+              Our system estimates total square footage from your selection so your
+              quote reflects the right amount of time and attention.
             </p>
           </div>
 
           <div className="rounded-2xl border p-4">
             <label className="font-medium text-stone-800">Square Feet</label>
             <div className="mt-4">
-              <NumberField label="Total Sq Ft" value={sqft} setValue={setSqft} min={0} step={50} />
+              <NumberField
+                label="Total Sq Ft"
+                value={sqft}
+                setValue={setSqft}
+                min={0}
+                step={50}
+              />
               <p className="mt-1 text-xs text-stone-500">
-                {LEVEL_COPY[level]?.rateLabel || "Selected level rate"}: $
-                {result.effectiveRateForLevel.toFixed(2)} per sq ft.
+                We estimate hours from your home size and clean type, then multiply by{" "}
+                <span className="font-medium">${HOURLY_RATE}/hour</span>.
               </p>
-              <p className="mt-1 text-xs text-stone-500">
-                Using <span className="font-medium">{result.usedSqft.toLocaleString()} sq ft</span> (higher of entered{" "}
-                {result.sqftInput.toLocaleString()} and estimated {result.estSqft.toLocaleString()} based on Bedrooms & Bathrooms selection).
-              </p>
+              {result.sqftInput.toLocaleString() !==
+                result.estSqft.toLocaleString() && (
+                  <p className="mt-1 text-xs text-stone-500">
+                    Using{" "}
+                    <span className="font-medium">
+                      {result.usedSqft.toLocaleString()} sq ft
+                    </span>{" "}
+                    (higher of entered {result.sqftInput.toLocaleString()} and estimated{" "}
+                    {result.estSqft.toLocaleString()} based on Bedrooms & Bathrooms).
+                  </p>
+                )}
             </div>
           </div>
         </div>
 
-        {/* Level, Frequency & Promo */}
+        {/* Clean Type, Frequency, Eco, & Promo */}
         <div className="mt-6 rounded-2xl border p-4 relative">
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+            {/* Clean Type */}
             <div className="relative group">
               <label className="text-stone-700 flex items-center gap-2">
-                Level
+                Clean Type
                 <button
                   type="button"
-                  aria-label="More info about levels"
+                  aria-label="More info about clean types"
                   onClick={() => setIsLevelTipOpen((s) => !s)}
                   className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-stone-700 text-xs hover:bg-stone-300 md:pointer-events-none md:cursor-default"
                 >
@@ -329,18 +402,19 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
                 </button>
                 <div className="pointer-events-none absolute left-1/2 top-full z-10 hidden -translate-x-1/2 md:block">
                   <div className="mt-1 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg bg-stone-900 px-3 py-2 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-                    View the “Services” section below for details on what each service level includes.
+                    View the “Services” section below for details on what each clean
+                    type includes.
                   </div>
                 </div>
               </label>
 
               <SelectField
-                value={level}
-                setValue={setLevel}
+                value={cleanType}
+                setValue={setCleanType}
                 options={[
-                  { value: "standard", label: "Standard Refresh (~$0.26/sq ft)" },
-                  { value: "deep", label: "Deep Glow (Deep Clean) ($0.35/sq ft)" },
-                  { value: "move_out", label: "Move-In / Move-Out (~$0.46/sq ft)" },
+                  { value: "standard", label: "Standard Clean" },
+                  { value: "deep", label: "Deep Clean" },
+                  { value: "move_out", label: "Move-In / Move-Out" },
                 ]}
               />
               {isLevelTipOpen && (
@@ -348,7 +422,8 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
                   <div className="rounded-xl bg-stone-900 px-4 py-3 text-xs text-white shadow-2xl">
                     <div className="flex items-start justify-between gap-3">
                       <p className="pr-2">
-                        View the <span className="italic">Services</span> section below for details on what each service level includes.
+                        View the <span className="italic">Services</span> section below
+                        for details on what each clean type includes.
                       </p>
                       <button
                         type="button"
@@ -364,6 +439,7 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
               )}
             </div>
 
+            {/* Frequency */}
             <SelectField
               label="Frequency"
               value={frequency}
@@ -375,6 +451,30 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
                 { value: "weekly", label: "Weekly (−18%)" },
               ]}
             />
+
+            {/* Eco Products */}
+            <div>
+              <label className="block text-stone-700">Products</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  id="eco-products"
+                  type="checkbox"
+                  checked={ecoProducts}
+                  onChange={(e) => setEcoProducts(e.target.checked)}
+                  className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+                />
+                <label
+                  htmlFor="eco-products"
+                  className="text-sm text-stone-700 cursor-pointer"
+                >
+                  Use eco-friendly products (+15%)
+                </label>
+              </div>
+              <p className="mt-1 text-[11px] text-stone-500">
+                Default for Golden Hour cleanings. Uncheck if you prefer conventional
+                products.
+              </p>
+            </div>
 
             {/* Promo Code */}
             <div>
@@ -390,141 +490,179 @@ export default function QuoteCalculator({ showCalendly, setShowCalendly }) {
                   autoCapitalize="characters"
                 />
               </div>
-              {promoError && <p className="mt-1 text-xs text-red-600">{promoError}</p>}
+              {promoError && (
+                <p className="mt-1 text-xs text-red-600">{promoError}</p>
+              )}
               {promoValid && !promoError && (
                 <p className="mt-1 text-xs text-green-700">Code applied: −$50</p>
               )}
               <p className="mt-1 text-[11px] text-stone-500">
-                Applies to Deep Clean only. Discount reduces the estimated total; booking deposit unchanged.
+                Applies to Deep Clean only. Discount reduces the estimated total;
+                booking deposit unchanged.
               </p>
             </div>
           </div>
 
           <p className="mt-2 text-xs text-stone-500">
-            Current effective rate for this level: ${result.effectiveRateForLevel.toFixed(3)}/sq ft
+            We’ll estimate the time your home needs and quote at{" "}
+            <span className="font-medium">${HOURLY_RATE}/hour</span>, plus a 15% eco
+            upcharge when selected.
           </p>
         </div>
 
         {/* Summary */}
         <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {/* Breakdown */}
           <div className="rounded-2xl border p-4">
             <label className="font-medium text-stone-800">Breakdown</label>
             <ul className="mt-3 space-y-1 text-sm text-stone-700">
               <li className="flex justify-between">
                 <span>
-                  Base (Standard): {result.usedSqft.toLocaleString()} sq ft × ${result.standardRate.toFixed(2)}/sq ft
+                  Estimated labor (upper range):{" "}
+                  {result.billableHours.toFixed(1)} hours × ${HOURLY_RATE}/hr
                 </span>
-                <span className="tabular-nums">${result.base}</span>
+                <span className="tabular-nums">
+                  ${result.baseLabor.toLocaleString()}
+                </span>
               </li>
-              <li className="flex justify-between">
-                <span>Level adjustment</span>
-                <span className="tabular-nums">{formatSigned(result.levelAdj)}</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Frequency discount</span>
-                <span className="tabular-nums">−${result.freqDiscount}</span>
-              </li>
+
+              {result.freqDiscount > 0 && (
+                <li className="flex justify-between">
+                  <span>Frequency discount</span>
+                  <span className="tabular-nums">
+                    −${result.freqDiscount.toLocaleString()}
+                  </span>
+                </li>
+              )}
+
+              {result.ecoUpcharge > 0 && (
+                <li className="flex justify-between">
+                  <span>Eco-friendly products (+15%)</span>
+                  <span className="tabular-nums">
+                    {formatSigned(result.ecoUpcharge)}
+                  </span>
+                </li>
+              )}
+
               {promoValid && (
                 <li className="flex justify-between text-emerald-800">
                   <span>Promo (GOLDENWELCOME)</span>
-                  <span className="tabular-nums">−${result.promoDiscount}</span>
+                  <span className="tabular-nums">
+                    −${result.promoDiscount.toLocaleString()}
+                  </span>
                 </li>
               )}
             </ul>
           </div>
 
+          {/* Total & Time */}
           <div className="rounded-2xl border p-4 bg-amber-50/60">
             <label className="font-medium text-stone-800">Your quote</label>
             <div className="mt-3 flex items-end justify-between">
               <div>
-                <div className="text-4xl font-semibold tabular-nums">{formatCurrency(result.totalAfterPromo)}</div>
-                <div className="text-xs text-stone-600">Estimated total</div>
+                <div className="text-3xl md:text-4xl font-semibold tabular-nums">
+                  {formatCurrency(result.totalAfterPromoLow)} –{" "}
+                  {formatCurrency(result.totalAfterPromo)}
+                </div>
+                <div className="text-xs text-stone-600">
+                  Estimated range based on{" "}
+                  {result.billableHoursLow.toFixed(1)}–{" "}
+                  {result.billableHours.toFixed(1)}{" "}
+                  {hoursUnit(result.billableHours)} of cleaning time.
+                </div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-stone-700">Booking deposit (based on size chart & time estimate)</div>
-                <div className="text-lg font-medium tabular-nums">{formatCurrency(result.bookingFee)}</div>
+                <div className="text-sm text-stone-700">
+                  Booking deposit (based on time window)
+                </div>
+                <div className="text-lg font-medium tabular-nums">
+                  {formatCurrency(result.bookingFee)}
+                </div>
               </div>
             </div>
 
             {/* Time estimate + reserved window */}
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-              {!result.exceedsCap && (
-                <>
-                  <div className="text-sm text-stone-800">
-                    Estimated time on site (1 cleaner):{" "}
-                    <span className="font-medium tabular-nums">
-                      {result.time.displayText}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-xs text-stone-600">
-                    We’ll reserve an{" "}
-                    <span className="font-medium">
-                      {result.reservedWindowHours} {hoursUnit(result.reservedWindowHours)}
-                    </span>{" "}
-                    window to ensure enough time.
-                  </div>
-                  <div className="mt-1 text-sm text-stone-800">
-                    We may add a second cleaner to finish sooner if needed — price unchanged; only duration changes.
-                  </div>
-                </>
-              )}
-
-              {result.exceedsCap && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  For one cleaner, our maximum per visit at this service level is{" "}
-                  <span className="font-semibold">{result.maxSqftOneCleaner.toLocaleString()} sq ft</span>.{" "}
-                  This looks larger — please call or text us to schedule a longer or multi-cleaner visit.
-                </div>
-              )}
+              <div className="text-sm text-stone-800">
+                Estimated time on site:{" "}
+                <span className="font-medium tabular-nums">
+                  {result.time.displayText}
+                </span>{" "}
+                with{" "}
+                <span className="font-medium">
+                  {result.time.cleaners}{" "}
+                  {result.time.cleaners === 1 ? "cleaner" : "cleaners"}
+                </span>
+                .
+              </div>
+              <div className="mt-1 text-xs text-stone-600">
+                We’ll reserve an{" "}
+                <span className="font-medium">
+                  {result.reservedWindowHours}{" "}
+                  {hoursUnit(result.reservedWindowHours)}
+                </span>{" "}
+                arrival window to ensure enough time.
+              </div>
+              <div className="mt-1 text-xs text-stone-600">
+                Larger jobs are completed with two cleaners so your visit finishes
+                sooner — your price is based on total hours, not how many people are
+                on-site.
+              </div>
             </div>
 
             {/* Dual CTA */}
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {result.exceedsCap ? (
-                <button
-                  type="button"
-                  onClick={() => window.open(`tel:${CONTACT.phone.replace(/[^\d+]/g, "")}`, "_self")}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
-                  aria-label="Call to book — larger home"
-                >
-                  Call to Book — Larger Home
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onScheduleClick}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
-                  aria-label="Book online now"
-                >
-                  Schedule & Pay Deposit
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={onScheduleClick}
+                className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
+                aria-label="Book online now"
+              >
+                Schedule & Pay Deposit
+              </button>
 
               <ContactSheet
                 phone={CONTACT.phone}
                 sms={CONTACT.sms}
                 email={CONTACT.email}
                 context={{
-                  level,
+                  level: cleanType,
                   sqft: result.usedSqft,
                   sqftInput: result.sqftInput,
                   bedrooms,
                   bathrooms,
-                  total: result.totalAfterPromo, // include promo
+                  total: result.totalAfterPromo, // upper end
+                  totalLow: result.totalAfterPromoLow,
                   frequency,
-                  promo: promoValid ? { code: promoCode.trim().toUpperCase(), amount: result.promoDiscount } : null,
+                  ecoProducts,
+                  cleaners: result.time.cleaners,
+                  billableHoursLow: result.billableHoursLow,
+                  billableHours: result.billableHours,
+                  hourlyRate: result.hourlyRate,
+                  promo: promoValid
+                    ? {
+                      code: promoCode.trim().toUpperCase(),
+                      amount: result.promoDiscount,
+                    }
+                    : null,
                 }}
               />
             </div>
 
             <p className="mt-2 text-xs text-stone-600">
-              Final price confirmed after a quick walkthrough. Booking deposit fully applied to your total; refundable up to 24 hours before your appointment.
+              Final price is confirmed after a quick walkthrough. Booking deposit is
+              fully applied to your total and refundable up to 24 hours before your
+              appointment.
             </p>
           </div>
         </div>
 
         {/* Calendly modal */}
-        <CalendlyBooking url={calendlyUrl} isOpen={showCalendly} setOpen={setShowCalendly} />
+        <CalendlyBooking
+          url={calendlyUrl}
+          isOpen={showCalendly}
+          setOpen={setShowCalendly}
+        />
       </div>
     </div>
   );
