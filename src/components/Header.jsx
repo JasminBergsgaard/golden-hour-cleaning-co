@@ -7,7 +7,7 @@ export default function Header() {
   compactRef.current = compact
 
   // --- Size & timing ---
-  const EXPANDED_H = 288
+  const EXPANDED_H = 222
   const COMPACT_H = 120
   const BANNER_H = 36
   const TRANS_MS = 420
@@ -103,6 +103,7 @@ export default function Header() {
     'Flexible weekly • bi-weekly • monthly',
     'Same-week openings available',
     'Easy online booking',
+    'Locally owned & operated',
     'Questions? Call or Text us: (503) 893-4795',
   ]
 

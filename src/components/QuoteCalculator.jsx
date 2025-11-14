@@ -319,346 +319,344 @@ export default function QuoteCalculator({
   }, [bedrooms, bathrooms, sqft, cleanType, frequency, ecoProducts, promoValid]);
 
   return (
-    <div className="pt-10">
-      <div
-        id="quote"
-        className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-6 shadow-sm md:p-8 pt-14"
-      >
-        <h2 className="font-serif text-2xl md:text-3xl">{title}</h2>
-        <p className="mt-1 text-stone-600">{subtitle}</p>
+    <div
+      id="quote-calculator"
+      className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-6 shadow-sm md:p-8 pt-14"
+    >
+      <h2 className="font-serif text-2xl md:text-3xl">{title}</h2>
+      <p className="mt-1 text-stone-600">{subtitle}</p>
 
-        {/* Inputs */}
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border p-4">
-            <label className="font-medium text-stone-800">Bedrooms & Bathrooms</label>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <NumberField
-                label="Bedrooms"
-                value={bedrooms}
-                setValue={setBedrooms}
-                min={0}
-              />
-              <NumberField
-                label="Bathrooms"
-                value={bathrooms}
-                setValue={setBathrooms}
-                min={1}
-              />
-            </div>
-            <p className="mt-2 text-xs text-stone-500">
-              Select how many bedrooms and bathrooms you’d like us to care for.
-              Our system estimates total square footage from your selection so your
-              quote reflects the right amount of time and attention.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border p-4">
-            <label className="font-medium text-stone-800">Square Feet</label>
-            <div className="mt-4">
-              <NumberField
-                label="Total Sq Ft"
-                value={sqft}
-                setValue={setSqft}
-                min={0}
-                step={50}
-              />
-              <p className="mt-1 text-xs text-stone-500">
-                We estimate hours from your home size and clean type, then multiply by{" "}
-                <span className="font-medium">${HOURLY_RATE}/hour</span>.
-              </p>
-              {result.sqftInput.toLocaleString() !==
-                result.estSqft.toLocaleString() && (
-                  <p className="mt-1 text-xs text-stone-500">
-                    Using{" "}
-                    <span className="font-medium">
-                      {result.usedSqft.toLocaleString()} sq ft
-                    </span>{" "}
-                    (higher of entered {result.sqftInput.toLocaleString()} and estimated{" "}
-                    {result.estSqft.toLocaleString()} based on Bedrooms & Bathrooms).
-                  </p>
-                )}
-            </div>
-          </div>
-        </div>
-
-        {/* Clean Type, Frequency, Eco, & Promo */}
-        <div className="mt-6 rounded-2xl border p-4 relative">
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-            {/* Clean Type */}
-            <div className="relative group">
-              <label className="text-stone-700 flex items-center gap-2">
-                Clean Type
-                <button
-                  type="button"
-                  aria-label="More info about clean types"
-                  onClick={() => setIsLevelTipOpen((s) => !s)}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-stone-700 text-xs hover:bg-stone-300 md:pointer-events-none md:cursor-default"
-                >
-                  ?
-                </button>
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 hidden -translate-x-1/2 md:block">
-                  <div className="mt-1 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg bg-stone-900 px-3 py-2 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-                    View the “Services” section below for details on what each clean
-                    type includes.
-                  </div>
-                </div>
-              </label>
-
-              <SelectField
-                value={cleanType}
-                setValue={setCleanType}
-                options={[
-                  { value: "standard", label: "Standard Clean" },
-                  { value: "deep", label: "Deep Clean" },
-                  { value: "move_out", label: "Move-In / Move-Out" },
-                ]}
-              />
-              {isLevelTipOpen && (
-                <div className="md:hidden fixed inset-x-4 bottom-4 z-50">
-                  <div className="rounded-xl bg-stone-900 px-4 py-3 text-xs text-white shadow-2xl">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="pr-2">
-                        View the <span className="italic">Services</span> section below
-                        for details on what each clean type includes.
-                      </p>
-                      <button
-                        type="button"
-                        aria-label="Close tooltip"
-                        onClick={() => setIsLevelTipOpen(false)}
-                        className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded bg-stone-700/60 text-white"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Frequency */}
-            <SelectField
-              label="Frequency"
-              value={frequency}
-              setValue={setFrequency}
-              options={[
-                { value: "one_time", label: "One-time" },
-                { value: "monthly", label: "Monthly (−5%)" },
-                { value: "bi_weekly", label: "Bi-weekly (−12%)" },
-                { value: "weekly", label: "Weekly (−18%)" },
-              ]}
+      {/* Inputs */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border p-4">
+          <label className="font-medium text-stone-800">Bedrooms & Bathrooms</label>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <NumberField
+              label="Bedrooms"
+              value={bedrooms}
+              setValue={setBedrooms}
+              min={0}
             />
-
-            {/* Eco Products */}
-            <div>
-              <label className="block text-stone-700">Products</label>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  id="eco-products"
-                  type="checkbox"
-                  checked={ecoProducts}
-                  onChange={(e) => setEcoProducts(e.target.checked)}
-                  className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400"
-                />
-                <label
-                  htmlFor="eco-products"
-                  className="text-sm text-stone-700 cursor-pointer"
-                >
-                  Use eco-friendly products (+15%)
-                </label>
-              </div>
-              <p className="mt-1 text-[11px] text-stone-500">
-                Eco is our Golden Hour standard. Uncheck if you prefer conventional supplies.
-              </p>
-            </div>
-
-            {/* Promo Code */}
-            <div>
-              <label className="block text-stone-700">Promo code</label>
-              <div className="mt-1 flex gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  placeholder="Enter code"
-                  className="w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                  inputMode="text"
-                  autoCapitalize="characters"
-                />
-              </div>
-              {promoError && (
-                <p className="mt-1 text-xs text-red-600">{promoError}</p>
-              )}
-              {promoValid && !promoError && (
-                <p className="mt-1 text-xs text-green-700">Code applied: −$50</p>
-              )}
-              <p className="mt-1 text-[11px] text-stone-500">
-                Applies to Deep Clean only. Discount reduces the estimated total;
-                booking deposit unchanged.
-              </p>
-            </div>
+            <NumberField
+              label="Bathrooms"
+              value={bathrooms}
+              setValue={setBathrooms}
+              min={1}
+            />
           </div>
-
           <p className="mt-2 text-xs text-stone-500">
-            We’ll estimate the time your home needs and quote at{" "}
-            <span className="font-medium">${HOURLY_RATE}/hour</span>, plus a 15% eco
-            upcharge when selected.
+            Select how many bedrooms and bathrooms you’d like us to care for.
+            Our system estimates total square footage from your selection so your
+            quote reflects the right amount of time and attention.
           </p>
         </div>
 
-        {/* Summary */}
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {/* Breakdown */}
-          <div className="rounded-2xl border p-4">
-            <label className="font-medium text-stone-800">Breakdown</label>
-            <ul className="mt-3 space-y-1 text-sm text-stone-700">
-              <li className="flex justify-between">
-                <span>
-                  Estimated labor (upper range):{" "}
-                  {result.billableHours.toFixed(1)} hours × ${HOURLY_RATE}/hr
-                </span>
-                <span className="tabular-nums">
-                  ${result.baseLabor.toLocaleString()}
-                </span>
-              </li>
-
-              {result.freqDiscount > 0 && (
-                <li className="flex justify-between">
-                  <span>Frequency discount</span>
-                  <span className="tabular-nums">
-                    −${result.freqDiscount.toLocaleString()}
-                  </span>
-                </li>
+        <div className="rounded-2xl border p-4">
+          <label className="font-medium text-stone-800">Square Feet</label>
+          <div className="mt-4">
+            <NumberField
+              label="Total Sq Ft"
+              value={sqft}
+              setValue={setSqft}
+              min={0}
+              step={50}
+            />
+            <p className="mt-1 text-xs text-stone-500">
+              We estimate hours from your home size and clean type, then multiply by{" "}
+              <span className="font-medium">${HOURLY_RATE}/hour</span>.
+            </p>
+            {result.sqftInput.toLocaleString() !==
+              result.estSqft.toLocaleString() && (
+                <p className="mt-1 text-xs text-stone-500">
+                  Using{" "}
+                  <span className="font-medium">
+                    {result.usedSqft.toLocaleString()} sq ft
+                  </span>{" "}
+                  (higher of entered {result.sqftInput.toLocaleString()} and estimated{" "}
+                  {result.estSqft.toLocaleString()} based on Bedrooms & Bathrooms).
+                </p>
               )}
-
-              {result.ecoUpcharge > 0 && (
-                <li className="flex justify-between">
-                  <span>Eco-friendly products (+15%)</span>
-                  <span className="tabular-nums">
-                    {formatSigned(result.ecoUpcharge)}
-                  </span>
-                </li>
-              )}
-
-              {promoValid && (
-                <li className="flex justify-between text-emerald-800">
-                  <span>Promo (GOLDENWELCOME)</span>
-                  <span className="tabular-nums">
-                    −${result.promoDiscount.toLocaleString()}
-                  </span>
-                </li>
-              )}
-            </ul>
           </div>
+        </div>
+      </div>
 
-          {/* Total & Time */}
-          <div className="rounded-2xl border p-4 bg-amber-50/60">
-            <label className="font-medium text-stone-800">Your quote</label>
-            <div className="mt-3 flex items-end justify-between">
-              <div>
-                <div className="text-3xl md:text-4xl font-semibold tabular-nums">
-                  {formatCurrency(result.totalAfterPromoLow)} –{" "}
-                  {formatCurrency(result.totalAfterPromo)}
-                </div>
-                <div className="text-xs text-stone-600">
-                  Estimated range based on{" "}
-                  {result.billableHoursLow.toFixed(1)}–{" "}
-                  {result.billableHours.toFixed(1)}{" "}
-                  {hoursUnit(result.billableHours)} of cleaning time.
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-stone-700">
-                  Booking deposit <small>(applied to your final total)</small>
-                </div>
-                <div className="text-lg font-medium tabular-nums">
-                  {formatCurrency(result.bookingFee)}
-                </div>
-              </div>
-            </div>
-
-            {/* Time estimate + reserved window */}
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-              <div className="text-sm text-stone-800">
-                Estimated time on site:{" "}
-                <span className="font-medium tabular-nums">
-                  {result.time.displayText}
-                </span>{" "}
-                with{" "}
-                <span className="font-medium">
-                  {result.time.cleaners}{" "}
-                  {result.time.cleaners === 1 ? "cleaner" : "cleaners"}
-                </span>
-                .
-              </div>
-              <div className="mt-1 text-xs text-stone-600">
-                We’ll reserve an{" "}
-                <span className="font-medium">
-                  {result.reservedWindowHours}{" "}
-                  {hoursUnit(result.reservedWindowHours)}
-                </span>{" "}
-                arrival window to ensure enough time.
-              </div>
-              <div className="mt-1 text-xs text-stone-600">
-                Larger jobs may be completed with two cleaners so your visit finishes
-                sooner — your price is based on total cleaning hours, not how many people are
-                on-site.
-              </div>
-            </div>
-
-            {/* Dual CTA */}
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {/* Clean Type, Frequency, Eco, & Promo */}
+      <div className="mt-6 rounded-2xl border p-4 relative">
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+          {/* Clean Type */}
+          <div className="relative group">
+            <label className="text-stone-700 flex items-center gap-2">
+              Clean Type
               <button
                 type="button"
-                onClick={onScheduleClick}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
-                aria-label="Book online now"
+                aria-label="More info about clean types"
+                onClick={() => setIsLevelTipOpen((s) => !s)}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-stone-700 text-xs hover:bg-stone-300 md:pointer-events-none md:cursor-default"
               >
-                Schedule & Pay Deposit
+                ?
               </button>
+              <div className="pointer-events-none absolute left-1/2 top-full z-10 hidden -translate-x-1/2 md:block">
+                <div className="mt-1 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg bg-stone-900 px-3 py-2 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+                  View the “Services” section below for details on what each clean
+                  type includes.
+                </div>
+              </div>
+            </label>
 
-              <ContactSheet
-                phone={CONTACT.phone}
-                sms={CONTACT.sms}
-                email={CONTACT.email}
-                context={{
-                  level: cleanType,
-                  sqft: result.usedSqft,
-                  sqftInput: result.sqftInput,
-                  bedrooms,
-                  bathrooms,
-                  total: result.totalAfterPromo, // upper end
-                  totalLow: result.totalAfterPromoLow,
-                  frequency,
-                  ecoProducts,
-                  cleaners: result.time.cleaners,
-                  billableHoursLow: result.billableHoursLow,
-                  billableHours: result.billableHours,
-                  hourlyRate: result.hourlyRate,
-                  promo: promoValid
-                    ? {
-                      code: promoCode.trim().toUpperCase(),
-                      amount: result.promoDiscount,
-                    }
-                    : null,
-                }}
+            <SelectField
+              value={cleanType}
+              setValue={setCleanType}
+              options={[
+                { value: "standard", label: "Standard Clean" },
+                { value: "deep", label: "Deep Clean" },
+                { value: "move_out", label: "Move-In / Move-Out" },
+              ]}
+            />
+            {isLevelTipOpen && (
+              <div className="md:hidden fixed inset-x-4 bottom-4 z-50">
+                <div className="rounded-xl bg-stone-900 px-4 py-3 text-xs text-white shadow-2xl">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="pr-2">
+                      View the <span className="italic">Services</span> section below
+                      for details on what each clean type includes.
+                    </p>
+                    <button
+                      type="button"
+                      aria-label="Close tooltip"
+                      onClick={() => setIsLevelTipOpen(false)}
+                      className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded bg-stone-700/60 text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Frequency */}
+          <SelectField
+            label="Frequency"
+            value={frequency}
+            setValue={setFrequency}
+            options={[
+              { value: "one_time", label: "One-time" },
+              { value: "monthly", label: "Monthly (−5%)" },
+              { value: "bi_weekly", label: "Bi-weekly (−12%)" },
+              { value: "weekly", label: "Weekly (−18%)" },
+            ]}
+          />
+
+          {/* Eco Products */}
+          <div>
+            <label className="block text-stone-700">Products</label>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                id="eco-products"
+                type="checkbox"
+                checked={ecoProducts}
+                onChange={(e) => setEcoProducts(e.target.checked)}
+                className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+              />
+              <label
+                htmlFor="eco-products"
+                className="text-sm text-stone-700 cursor-pointer"
+              >
+                Use eco-friendly products (+15%)
+              </label>
+            </div>
+            <p className="mt-1 text-[11px] text-stone-500">
+              Eco is our Golden Hour standard. Uncheck if you prefer conventional supplies.
+            </p>
+          </div>
+
+          {/* Promo Code */}
+          <div>
+            <label className="block text-stone-700">Promo code</label>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Enter code"
+                className="w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                inputMode="text"
+                autoCapitalize="characters"
               />
             </div>
-
-            <p className="mt-2 text-xs text-stone-600">
-              Final price is confirmed after a quick in-person walkthrough. Booking deposit is
-              fully applied to your total and refundable up to 24 hours before your
-              appointment.
+            {promoError && (
+              <p className="mt-1 text-xs text-red-600">{promoError}</p>
+            )}
+            {promoValid && !promoError && (
+              <p className="mt-1 text-xs text-green-700">Code applied: −$50</p>
+            )}
+            <p className="mt-1 text-[11px] text-stone-500">
+              Applies to Deep Clean only. Discount reduces the estimated total;
+              booking deposit unchanged.
             </p>
           </div>
         </div>
 
-        {/* Calendly modal */}
-        <CalendlyBooking
-          url={calendlyUrl}
-          isOpen={showCalendly}
-          setOpen={setShowCalendly}
-        />
+        <p className="mt-2 text-xs text-stone-500">
+          We’ll estimate the time your home needs and quote at{" "}
+          <span className="font-medium">${HOURLY_RATE}/hour</span>, plus a 15% eco
+          upcharge when selected.
+        </p>
       </div>
+
+      {/* Summary */}
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
+        {/* Breakdown */}
+        <div className="rounded-2xl border p-4">
+          <label className="font-medium text-stone-800">Breakdown</label>
+          <ul className="mt-3 space-y-1 text-sm text-stone-700">
+            <li className="flex justify-between">
+              <span>
+                Estimated labor (upper range):{" "}
+                {result.billableHours.toFixed(1)} hours × ${HOURLY_RATE}/hr
+              </span>
+              <span className="tabular-nums">
+                ${result.baseLabor.toLocaleString()}
+              </span>
+            </li>
+
+            {result.freqDiscount > 0 && (
+              <li className="flex justify-between">
+                <span>Frequency discount</span>
+                <span className="tabular-nums">
+                  −${result.freqDiscount.toLocaleString()}
+                </span>
+              </li>
+            )}
+
+            {result.ecoUpcharge > 0 && (
+              <li className="flex justify-between">
+                <span>Eco-friendly products (+15%)</span>
+                <span className="tabular-nums">
+                  {formatSigned(result.ecoUpcharge)}
+                </span>
+              </li>
+            )}
+
+            {promoValid && (
+              <li className="flex justify-between text-emerald-800">
+                <span>Promo (GOLDENWELCOME)</span>
+                <span className="tabular-nums">
+                  −${result.promoDiscount.toLocaleString()}
+                </span>
+              </li>
+            )}
+          </ul>
+        </div>
+
+        {/* Total & Time */}
+        <div className="rounded-2xl border p-4 bg-amber-50/60">
+          <label className="font-medium text-stone-800">Your quote</label>
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <div className="text-3xl md:text-4xl font-semibold tabular-nums">
+                {formatCurrency(result.totalAfterPromoLow)} –{" "}
+                {formatCurrency(result.totalAfterPromo)}
+              </div>
+              <div className="text-xs text-stone-600">
+                Estimated range based on{" "}
+                {result.billableHoursLow.toFixed(1)}–{" "}
+                {result.billableHours.toFixed(1)}{" "}
+                {hoursUnit(result.billableHours)} of cleaning time.
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-stone-700">
+                Booking deposit <small>(applied to your final total)</small>
+              </div>
+              <div className="text-lg font-medium tabular-nums">
+                {formatCurrency(result.bookingFee)}
+              </div>
+            </div>
+          </div>
+
+          {/* Time estimate + reserved window */}
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+            <div className="text-sm text-stone-800">
+              Estimated time on site:{" "}
+              <span className="font-medium tabular-nums">
+                {result.time.displayText}
+              </span>{" "}
+              with{" "}
+              <span className="font-medium">
+                {result.time.cleaners}{" "}
+                {result.time.cleaners === 1 ? "cleaner" : "cleaners"}
+              </span>
+              .
+            </div>
+            <div className="mt-1 text-xs text-stone-600">
+              We’ll reserve an{" "}
+              <span className="font-medium">
+                {result.reservedWindowHours}{" "}
+                {hoursUnit(result.reservedWindowHours)}
+              </span>{" "}
+              arrival window to ensure enough time.
+            </div>
+            <div className="mt-1 text-xs text-stone-600">
+              Larger jobs may be completed with two cleaners so your visit finishes
+              sooner — your price is based on total cleaning hours, not how many people are
+              on-site.
+            </div>
+          </div>
+
+          {/* Dual CTA */}
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onScheduleClick}
+              className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
+              aria-label="Book online now"
+            >
+              Schedule & Pay Deposit
+            </button>
+
+            <ContactSheet
+              phone={CONTACT.phone}
+              sms={CONTACT.sms}
+              email={CONTACT.email}
+              context={{
+                level: cleanType,
+                sqft: result.usedSqft,
+                sqftInput: result.sqftInput,
+                bedrooms,
+                bathrooms,
+                total: result.totalAfterPromo, // upper end
+                totalLow: result.totalAfterPromoLow,
+                frequency,
+                ecoProducts,
+                cleaners: result.time.cleaners,
+                billableHoursLow: result.billableHoursLow,
+                billableHours: result.billableHours,
+                hourlyRate: result.hourlyRate,
+                promo: promoValid
+                  ? {
+                    code: promoCode.trim().toUpperCase(),
+                    amount: result.promoDiscount,
+                  }
+                  : null,
+              }}
+            />
+          </div>
+
+          <p className="mt-2 text-xs text-stone-600">
+            Final price is confirmed after a quick in-person walkthrough. Booking deposit is
+            fully applied to your total and refundable up to 24 hours before your
+            appointment.
+          </p>
+        </div>
+      </div>
+
+      {/* Calendly modal */}
+      <CalendlyBooking
+        url={calendlyUrl}
+        isOpen={showCalendly}
+        setOpen={setShowCalendly}
+      />
     </div>
   );
 }

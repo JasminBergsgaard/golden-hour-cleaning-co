@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { formatCurrency, buildMailto, buildSmsLink, formatPhone } from '../helpers/contactHelpers';
 
 export default function ContactSheet({ phone, sms, email, context }) {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const firstActionRef = useRef(null);
 
   const levelLabel =
     context.level === "standard" ? "Standard Refresh" :
@@ -32,14 +34,53 @@ export default function ContactSheet({ phone, sms, email, context }) {
     body: summary,
   });
 
+  // Close on outside click / Esc / scroll
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!open) return;
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    const onScroll = () => {
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [open]);
+
+  // Focus the first action when opening
+  useEffect(() => {
+    if (open && firstActionRef.current) {
+      firstActionRef.current.focus();
+    }
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div
+      ref={wrapRef}
+      className="relative w-full"
+      onClick={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         onClick={() => setOpen((s) => !s)}
         aria-expanded={open}
         aria-controls="contact-sheet"
-        className="inline-flex w-full items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-3 text-stone-900 hover:bg-stone-50"
+        className="inline-flex w-full items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-medium text-stone-900 hover:bg-stone-50"
       >
         Questions? Call / Text / Email
       </button>
@@ -47,9 +88,21 @@ export default function ContactSheet({ phone, sms, email, context }) {
       {open && (
         <div
           id="contact-sheet"
-          className="absolute right-0 z-40 mt-2 w-72 max-h:[60vh] overflow-auto rounded-xl border border-stone-200 bg-white p-3 shadow-xl sm:w-80
+          className="absolute bottom-full mb-2 right-0 z-40 w-72 max-h:[60vh] overflow-auto rounded-xl border border-stone-200 bg-white p-3 shadow-xl sm:w-80
                      md:right-auto md:left-1/2 md:-translate-x-1/2"
         >
+          {/* Arrow pointing down toward the button */}
+          <div
+            aria-hidden
+            className="absolute -bottom-2 right-6 h-0 w-0"
+            style={{
+              borderLeft: "8px solid transparent",
+              borderRight: "8px solid transparent",
+              borderTop: "8px solid rgba(255,255,255,0.95)",
+              filter: "drop-shadow(0 -1px 1px rgba(0,0,0,0.08))",
+            }}
+          />
+
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-stone-800">Contact us</div>
             <button
@@ -67,7 +120,11 @@ export default function ContactSheet({ phone, sms, email, context }) {
           </p>
 
           <div className="mt-3 space-y-2">
-            <a href={`tel:${phone}`} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
+            <a
+              ref={firstActionRef}
+              href={`tel:${phone}`}
+              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
+            >
               <div className="min-w-0">
                 <div className="text-sm text-stone-800 truncate">
                   Call {formatPhone(phone)}
@@ -76,14 +133,20 @@ export default function ContactSheet({ phone, sms, email, context }) {
               <span className="text-xs text-stone-500 shrink-0">Tap to dial</span>
             </a>
 
-            <a href={smsHref} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
+            <a
+              href={smsHref}
+              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
+            >
               <div className="min-w-0">
                 <div className="text-sm text-stone-800 truncate">Text us</div>
               </div>
               <span className="text-xs text-stone-500 shrink-0">Opens SMS</span>
             </a>
 
-            <a href={mailHref} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50">
+            <a
+              href={mailHref}
+              className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-stone-50"
+            >
               <div className="min-w-0">
                 <div className="text-sm text-stone-800">Email</div>
                 <div className="text-xs text-stone-700 break-all">

@@ -76,7 +76,7 @@ function ServiceCard({
     window.dispatchEvent(new CustomEvent("setQuoteLevel", { detail: levelKey }));
 
     // Smooth scroll to the calculator
-    const el = document.getElementById("quote");
+    const el = document.getElementById("quote-calculator");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
