@@ -175,15 +175,11 @@ export default function QuoteCalculator({
     const url = buildCalendlyUrlWithUtm(
       base,
       result,
-      cleanType,
-      frequency,
-      bedrooms,
-      bathrooms,
       {
         applied: promoValid,
         code: promoCode.trim().toUpperCase(),
         amount: promoValid ? 50 : 0,
-      }
+      },
     );
     setCalendlyUrl(url);
     setShowCalendly(true);
@@ -288,6 +284,7 @@ export default function QuoteCalculator({
       hourlyRate: HOURLY_RATE,
       billableHoursLow,
       billableHours: billableHoursHigh, // high end
+      billableHoursHigh, // high end
 
       // Use HIGH-end values in the detailed breakdown (most conservative)
       baseLabor: clampCurrency(baseLaborHighRaw),
@@ -299,7 +296,7 @@ export default function QuoteCalculator({
 
       // Range totals for display
       totalAfterPromoLow,
-      totalAfterPromo: totalAfterPromoHigh, // keep name for compatibility
+      totalAfterPromoHigh, // keep name for compatibility
 
       bookingFee: clampCurrency(bookingFeeRaw),
       reservedWindowHours,
@@ -556,7 +553,7 @@ export default function QuoteCalculator({
             <div>
               <div className="text-3xl md:text-4xl font-semibold tabular-nums">
                 {formatCurrency(result.totalAfterPromoLow)} –{" "}
-                {formatCurrency(result.totalAfterPromo)}
+                {formatCurrency(result.totalAfterPromoHigh)}
               </div>
               <div className="text-xs text-stone-600">
                 Estimated range based on{" "}
