@@ -39,6 +39,9 @@ const ECO_MULTIPLIER = 1.15;     // 15% upcharge
 const SQFT_PER_HOUR_BASE = 290;  // average productivity per cleaner (deep baseline)
 const MIN_VISIT_HOURS_ONE_CLEANER = 2;
 
+// We treat anything over 16 total person-hours as a "large job"
+const MAX_TOTAL_PERSON_HOURS = 16;
+
 // Deep is baseline (1.0). Standard is faster; Move-Out is slower.
 const CLEAN_TYPE_MULTIPLIER = {
   standard: 0.8,
@@ -54,7 +57,7 @@ const ADDON_FRIDGE_HOURS_LOW = 0.5;   // 30 min
 const ADDON_FRIDGE_HOURS_HIGH = 1.25; // 75 min
 
 const ADDON_OVEN_PRICE = 35;
-const ADDON_OVEN_HOURS_LOW = 20 / 60; // ~0.33 hours (20 min)
+const ADDON_OVEN_HOURS_LOW = 20 / 60;  // ~0.33 hours (20 min)
 const ADDON_OVEN_HOURS_HIGH = 45 / 60; // 0.75 hours (45 min)
 
 const ADDON_SECOND_KITCHEN_SQFT = 300;
@@ -259,6 +262,10 @@ export default function QuoteCalculator({
     const billableHoursLow = onSiteRangeLow * cleaners;
     const billableHoursHigh = onSiteRangeHigh * cleaners;
 
+    // Total person-hours (used to decide "large job")
+    const totalPersonHoursHigh = billableHoursHigh;
+    const isLargeJob = totalPersonHoursHigh > MAX_TOTAL_PERSON_HOURS;
+
     const hasTimeRange =
       Math.abs(onSiteRangeHigh - onSiteRangeLow) >= 0.26 ||
       Math.abs(billableHoursHigh - billableHoursLow) >= 0.26;
@@ -324,6 +331,7 @@ export default function QuoteCalculator({
       billableHoursLow,
       billableHours: billableHoursHigh, // high end
       billableHoursHigh, // alias
+      totalPersonHoursHigh,
 
       // High-end values in the detailed breakdown (most conservative)
       baseLabor: clampCurrency(baseLaborHighRaw),
@@ -363,6 +371,8 @@ export default function QuoteCalculator({
       addonHoursLow,
       addonHoursHigh,
       addonFlat: clampCurrency(addonFlat),
+
+      isLargeJob,
     };
   }, [
     bedrooms,
@@ -772,89 +782,144 @@ export default function QuoteCalculator({
             </div>
           </div>
 
-          {/* Time estimate + reserved window */}
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-            <div className="text-sm text-stone-800">
-              Estimated time on site:{" "}
-              <span className="font-medium tabular-nums">
-                {result.time.displayText}
-              </span>{" "}
-              with{" "}
-              <span className="font-medium">
-                {result.time.cleaners}{" "}
-                {result.time.cleaners === 1 ? "cleaner" : "cleaners"}
-              </span>
-              .
+          {/* Time estimate + reserved window — HIDDEN for large jobs */}
+          {!result.isLargeJob && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+              <div className="text-sm text-stone-800">
+                Estimated time on site:{" "}
+                <span className="font-medium tabular-nums">
+                  {result.time.displayText}
+                </span>{" "}
+                with{" "}
+                <span className="font-medium">
+                  {result.time.cleaners}{" "}
+                  {result.time.cleaners === 1 ? "cleaner" : "cleaners"}
+                </span>
+                .
+              </div>
+              <div className="mt-1 text-xs text-stone-600">
+                We’ll reserve an{" "}
+                <span className="font-medium">
+                  {result.reservedWindowHours}{" "}
+                  {hoursUnit(result.reservedWindowHours)}
+                </span>{" "}
+                arrival window to ensure enough time.
+              </div>
+              <div className="mt-1 text-xs text-stone-600">
+                Larger jobs may be completed with two cleaners so your visit
+                finishes sooner — your price is based on home size, not how many
+                people are on-site.
+              </div>
             </div>
-            <div className="mt-1 text-xs text-stone-600">
-              We’ll reserve an{" "}
-              <span className="font-medium">
-                {result.reservedWindowHours}{" "}
-                {hoursUnit(result.reservedWindowHours)}
-              </span>{" "}
-              arrival window to ensure enough time.
-            </div>
-            <div className="mt-1 text-xs text-stone-600">
-              Larger jobs may be completed with two cleaners so your visit finishes
-              sooner — your price is based on home size, not how many people are
-              on-site.
-            </div>
-          </div>
+          )}
 
-          {/* Dual CTA */}
+          {result.isLargeJob && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3 text-xs text-stone-700">
+              This is a larger project. For accurate scheduling, please call us
+              to book so we can plan enough time and team support.
+            </div>
+          )}
+
+          {/* Dual CTA: Calendly for normal jobs, Call-to-book for large jobs */}
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={onScheduleClick}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
-              aria-label="Book online now"
-            >
-              Schedule &amp; Pay Deposit
-            </button>
+            {!result.isLargeJob ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onScheduleClick}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white hover:bg-stone-800"
+                  aria-label="Book online now"
+                >
+                  Schedule &amp; Pay Deposit
+                </button>
 
-            <ContactSheet
-              phone={CONTACT.phone}
-              sms={CONTACT.sms}
-              email={CONTACT.email}
-              context={{
-                level: cleanType,
-                sqftLow: result.sqftLow,
-                sqftHigh: result.sqftHigh,
-                sqftInput: result.sqftInput,
-                bedrooms,
-                bathrooms,
-                total: result.totalAfterPromo, // upper end
-                totalLow: result.totalAfterPromoLow,
-                frequency,
-                ecoProducts,
-                cleaners: result.time.cleaners,
-                billableHoursLow: result.billableHoursLow,
-                billableHours: result.billableHours,
-                hourlyRate: result.hourlyRate, // available if you want it later, but not shown
-                addons: {
-                  fridge: result.addonFridge,
-                  oven: result.addonOven,
-                  secondKitchen: result.addonSecondKitchen,
-                },
-                promo: promoValid
-                  ? {
-                    code: promoCode.trim().toUpperCase(),
-                    amount: result.promoDiscount,
-                  }
-                  : null,
-              }}
-            />
+                <ContactSheet
+                  phone={CONTACT.phone}
+                  sms={CONTACT.sms}
+                  email={CONTACT.email}
+                  context={{
+                    level: cleanType,
+                    sqftLow: result.sqftLow,
+                    sqftHigh: result.sqftHigh,
+                    sqftInput: result.sqftInput,
+                    bedrooms,
+                    bathrooms,
+                    total: result.totalAfterPromo, // upper end
+                    totalLow: result.totalAfterPromoLow,
+                    frequency,
+                    ecoProducts,
+                    cleaners: result.time.cleaners,
+                    billableHoursLow: result.billableHoursLow,
+                    billableHours: result.billableHours,
+                    hourlyRate: result.hourlyRate,
+                    addons: {
+                      fridge: result.addonFridge,
+                      oven: result.addonOven,
+                      secondKitchen: result.addonSecondKitchen,
+                    },
+                    promo: promoValid
+                      ? {
+                        code: promoCode.trim().toUpperCase(),
+                        amount: result.promoDiscount,
+                      }
+                      : null,
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <a
+                  href={`tel:${CONTACT.phone}`}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-stone-900 px-4 py-3 text-white text-sm font-medium hover:bg-stone-800"
+                >
+                  Call to Book This Clean
+                </a>
+
+                <ContactSheet
+                  phone={CONTACT.phone}
+                  sms={CONTACT.sms}
+                  email={CONTACT.email}
+                  context={{
+                    level: cleanType,
+                    sqftLow: result.sqftLow,
+                    sqftHigh: result.sqftHigh,
+                    sqftInput: result.sqftInput,
+                    bedrooms,
+                    bathrooms,
+                    total: result.totalAfterPromo,
+                    totalLow: result.totalAfterPromoLow,
+                    frequency,
+                    ecoProducts,
+                    cleaners: result.time.cleaners,
+                    billableHoursLow: result.billableHoursLow,
+                    billableHours: result.billableHours,
+                    hourlyRate: result.hourlyRate,
+                    addons: {
+                      fridge: result.addonFridge,
+                      oven: result.addonOven,
+                      secondKitchen: result.addonSecondKitchen,
+                    },
+                    promo: promoValid
+                      ? {
+                        code: promoCode.trim().toUpperCase(),
+                        amount: result.promoDiscount,
+                      }
+                      : null,
+                  }}
+                />
+              </>
+            )}
           </div>
 
           <p className="mt-2 text-xs text-stone-600">
-            Final price is confirmed after a quick in-person walkthrough. Booking
-            deposit is fully applied to your total and refundable up to 24 hours
-            before your appointment.
+            Final price is confirmed after a quick in-person walkthrough.
+            Booking deposit is fully applied to your total and refundable up to
+            24 hours before your appointment.
           </p>
         </div>
       </div>
 
-      {/* Calendly modal */}
+      {/* Calendly modal (only really used when button is shown) */}
       <CalendlyBooking
         url={calendlyUrl}
         isOpen={showCalendly}
