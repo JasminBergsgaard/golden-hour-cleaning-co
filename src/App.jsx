@@ -35,15 +35,22 @@ export default function App() {
                   <div className="grid w-full max-w-xl grid-cols-2 gap-3 text-sm text-stone-700 sm:grid-cols-4">
                     <Badge icon={<ShieldCheck />} label="Licensed & Insured" />
                     <Badge icon={<BadgeCheck />} label="Background-Checked Professionals" />
-                    {/* <Badge icon={<Leaf />} label="Non-Toxic Products" /> */}
                     <Badge icon={<CalendarCheck2 />} label="Real-Time Booking" />
                     <Badge icon={<Stars />} label="5-Star Experience" />
                   </div>
                 </div>
+
                 <Trust />
+
                 <div className="pt-10">
-                  <QuoteCalculator showCalendly={showCalendly} setShowCalendly={setShowCalendly} title="Get a Quote" subtitle="Transparent, size-based pricing with thoughtful attention to your unique home." />
+                  <QuoteCalculator
+                    showCalendly={showCalendly}
+                    setShowCalendly={setShowCalendly}
+                    title="Get a Quote"
+                    subtitle="Transparent, size-based pricing with thoughtful attention to your unique home."
+                  />
                 </div>
+
                 <Services />
               </main>
 
@@ -53,7 +60,26 @@ export default function App() {
         />
 
         {/* Google Ads Landing Page */}
-        <Route path="/instant-booking" element={<InstantBookLanding showCalendly={showCalendly} setShowCalendly={setShowCalendly} />} />
+        <Route
+          path="/instant-booking"
+          element={
+            <InstantBookLanding
+              showCalendly={showCalendly}
+              setShowCalendly={setShowCalendly}
+            />
+          }
+        />
+
+        {/* 🔥 404 Fallback → Landing Page */}
+        <Route
+          path="*"
+          element={
+            <InstantBookLanding
+              showCalendly={showCalendly}
+              setShowCalendly={setShowCalendly}
+            />
+          }
+        />
       </Routes>
     </BrowserRouter>
   )
