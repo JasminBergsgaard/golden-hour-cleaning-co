@@ -42,7 +42,7 @@ export default function App() {
                 </div>
                 <Trust />
                 <div className="pt-10">
-                  <QuoteCalculator showCalendly={showCalendly} setShowCalendly={setShowCalendly} title="Get a Quote" subtitle="Transparent hourly pricing with eco-friendly supplies and gentle care." />
+                  <QuoteCalculator showCalendly={showCalendly} setShowCalendly={setShowCalendly} title="Get a Quote" subtitle="Transparent, size-based pricing with thoughtful attention to your unique home." />
                 </div>
                 <Services />
               </main>

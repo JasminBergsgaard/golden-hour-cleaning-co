@@ -3,7 +3,7 @@ export default function Services() {
     <section id="services" className="mx-auto max-w-6xl px-4 pt-14 pb-20">
       <h2 className="font-serif text-3xl mt-0">Services</h2>
       <p className="mt-1 text-stone-700">
-        We bill by the hour at <span className="font-medium">$75/hr</span>, using your home’s size
+        We bill by the square foot, using your home’s size
         and service type to estimate a time range. Eco-friendly products are our default—
         conventional options are available on request.
       </p>
@@ -17,7 +17,7 @@ export default function Services() {
             "Dust & high-touch areas",
             "Floors vacuum & mop",
           ]}
-          price="$75/hr • lighter upkeep"
+          price="~$0.26/sq ft • lighter upkeep"
           cta="Calculate My Quote"
           levelKey="standard"
         />
@@ -29,7 +29,7 @@ export default function Services() {
             "Bathroom detail",
             "Appliance exteriors",
           ]}
-          price="$75/hr • full-home reset"
+          price="$0.35/sq ft • full-home reset"
           cta="Calculate My Quote"
           featured
           levelKey="deep"
@@ -43,7 +43,7 @@ export default function Services() {
             "Detail corners",
             "Final floor finish",
           ]}
-          price="$75/hr • most intensive"
+          price="~$0.46/sq ft • most intensive"
           cta="Calculate My Quote"
           levelKey="move_out"
         />
