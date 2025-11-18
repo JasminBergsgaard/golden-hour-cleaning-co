@@ -9,45 +9,62 @@ export default function Services() {
       </p>
 
       <div className="mt-6 md:mt-8 grid md:grid-cols-3 gap-6">
+        {/* Standard */}
         <ServiceCard
           title="Standard Refresh"
           desc="Weekly or bi-weekly upkeep for homes that already feel pretty tidy."
           items={[
             "Kitchen & bath surfaces",
-            "Dust & high-touch areas",
+            "Dusting & high-touch areas",
             "Floors vacuum & mop",
+            "Light general tidy"
           ]}
           price="~$0.26/sq ft • lighter upkeep"
           cta="Calculate My Quote"
           levelKey="standard"
         />
+
+        {/* Deep */}
         <ServiceCard
           title="Deep Glow"
-          desc="A full-home reset — perfect if it’s been 2+ months since your last deep clean or things are feeling a bit built up."
+          desc="A full-home reset — perfect if it’s been 2+ months since last clean or things feel built up."
           items={[
             "Baseboards & edges",
-            "Bathroom detail",
-            "Appliance exteriors",
+            "Bathroom detailing",
+            "Kitchen detail + appliance exteriors",
+            "Doors & door frames",
+            "Light switches & outlets",
+            "Fan dusting",
+            "Spot wall wipe"
           ]}
-          price="$0.35/sq ft • full-home reset"
+          price="~$0.35/sq ft • full-home reset"
           cta="Calculate My Quote"
           featured
           levelKey="deep"
         />
 
+        {/* Move-In / Move-Out */}
         <ServiceCard
           title="Move-In Serenity"
-          desc="Empty-home detail clean so you can move in (or hand over keys) feeling clear."
+          desc="Empty-home detail clean so you can move in (or hand over keys) feeling completely clear."
           items={[
+            "Everything in Deep Glow, plus:",
             "Inside cabinets & drawers",
-            "Detail corners",
-            "Final floor finish",
+            "Closet shelves",
+            "Baseboards (full detail)",
+            "Doors + door frames",
+            "Light switches / outlets",
+            "Fan dusting",
+            "Full bathroom sanitation",
+            "Floor detail",
+            "Light fixture dusting"
           ]}
           price="~$0.46/sq ft • most intensive"
           cta="Calculate My Quote"
           levelKey="move_out"
         />
       </div>
+
     </section>
   );
 }
@@ -109,7 +126,7 @@ function ServiceCard({
       </a>
 
       <p className="mt-2 text-xs text-stone-500">
-        Quotes are based on estimated hours at $75/hr. Final price is confirmed after a quick walkthrough.
+        Quotes are based on estimated square footage, service level, and add-ons. Final price is confirmed after a quick walkthrough.
       </p>
     </div>
   );

@@ -46,6 +46,21 @@ const CLEAN_TYPE_MULTIPLIER = {
   move_out: 1.3,
 };
 
+/**
+ * Add-on configuration
+ */
+const ADDON_FRIDGE_PRICE = 55;
+const ADDON_FRIDGE_HOURS_LOW = 0.5;   // 30 min
+const ADDON_FRIDGE_HOURS_HIGH = 1.25; // 75 min
+
+const ADDON_OVEN_PRICE = 35;
+const ADDON_OVEN_HOURS_LOW = 20 / 60; // ~0.33 hours (20 min)
+const ADDON_OVEN_HOURS_HIGH = 45 / 60; // 0.75 hours (45 min)
+
+const ADDON_SECOND_KITCHEN_SQFT = 300;
+const ADDON_SECOND_KITCHEN_HOURS_LOW = 1.0;  // 60 min
+const ADDON_SECOND_KITCHEN_HOURS_HIGH = 1.5; // 90 min
+
 function clampCurrency(n) {
   return Math.max(0, Math.round(n));
 }
@@ -95,6 +110,11 @@ export default function QuoteCalculator({
   const [ecoProducts, setEcoProducts] = useState(true);
   const [isLevelTipOpen, setIsLevelTipOpen] = useState(false);
   const [calendlyUrl, setCalendlyUrl] = useState(null);
+
+  // Add-ons
+  const [includeFridge, setIncludeFridge] = useState(false);
+  const [includeOven, setIncludeOven] = useState(false);
+  const [includeSecondKitchen, setIncludeSecondKitchen] = useState(false);
 
   // Promo code state
   const [promoCode, setPromoCode] = useState("");
@@ -185,17 +205,45 @@ export default function QuoteCalculator({
       sqftHigh = Math.max(estSqft, safeSqftInput);
     }
 
+    // Second kitchen adds fixed square footage on both ends of the range
+    if (includeSecondKitchen) {
+      sqftLow += ADDON_SECOND_KITCHEN_SQFT;
+      sqftHigh += ADDON_SECOND_KITCHEN_SQFT;
+    }
+
     // Clean type multiplier (deep/move-out take more time)
     const cleanMult = CLEAN_TYPE_MULTIPLIER[cleanType] ?? 1.0;
 
-    // Person-hours for ONE cleaner from sq ft
+    // Add-ons: extra time + flat prices
+    let addonHoursLow = 0;
+    let addonHoursHigh = 0;
+    let addonFlat = 0;
+
+    if (includeFridge) {
+      addonHoursLow += ADDON_FRIDGE_HOURS_LOW;
+      addonHoursHigh += ADDON_FRIDGE_HOURS_HIGH;
+      addonFlat += ADDON_FRIDGE_PRICE;
+    }
+
+    if (includeOven) {
+      addonHoursLow += ADDON_OVEN_HOURS_LOW;
+      addonHoursHigh += ADDON_OVEN_HOURS_HIGH;
+      addonFlat += ADDON_OVEN_PRICE;
+    }
+
+    if (includeSecondKitchen) {
+      addonHoursLow += ADDON_SECOND_KITCHEN_HOURS_LOW;
+      addonHoursHigh += ADDON_SECOND_KITCHEN_HOURS_HIGH;
+    }
+
+    // Person-hours for ONE cleaner from sq ft + add-ons
     const billableHoursLowRaw = Math.max(
       MIN_VISIT_HOURS_ONE_CLEANER,
-      (sqftLow * cleanMult) / SQFT_PER_HOUR_BASE
+      (sqftLow * cleanMult) / SQFT_PER_HOUR_BASE + addonHoursLow
     );
     const billableHoursHighRaw = Math.max(
       MIN_VISIT_HOURS_ONE_CLEANER,
-      (sqftHigh * cleanMult) / SQFT_PER_HOUR_BASE
+      (sqftHigh * cleanMult) / SQFT_PER_HOUR_BASE + addonHoursHigh
     );
 
     // Decide team size based on the HIGH end
@@ -221,14 +269,18 @@ export default function QuoteCalculator({
         onSiteRangeHigh
       )} ${hoursUnit(onSiteRangeHigh)}`;
 
-    // Labor pricing LOW
-    const baseLaborLowRaw = billableHoursLow * HOURLY_RATE;
+    // Base labor (time-based) vs flat add-ons — compute separately
+    const baseLaborLowRawCore = billableHoursLow * HOURLY_RATE;
+    const baseLaborHighRawCore = billableHoursHigh * HOURLY_RATE;
+
+    const baseLaborLowRaw = baseLaborLowRawCore + addonFlat;
+    const baseLaborHighRaw = baseLaborHighRawCore + addonFlat;
+
     const disc = CFG.frequencyDiscount[frequency] || 0;
+
     const freqDiscountLowRaw = baseLaborLowRaw * disc;
     const subtotalLowAfterFreq = baseLaborLowRaw - freqDiscountLowRaw;
 
-    // Labor pricing HIGH
-    const baseLaborHighRaw = billableHoursHigh * HOURLY_RATE;
     const freqDiscountHighRaw = baseLaborHighRaw * disc;
     const subtotalHighAfterFreq = baseLaborHighRaw - freqDiscountHighRaw;
 
@@ -273,8 +325,10 @@ export default function QuoteCalculator({
       billableHours: billableHoursHigh, // high end
       billableHoursHigh, // alias
 
-      // Use HIGH-end values in the detailed breakdown (most conservative)
+      // High-end values in the detailed breakdown (most conservative)
       baseLabor: clampCurrency(baseLaborHighRaw),
+      baseLaborCore: clampCurrency(baseLaborHighRawCore),
+      addonFlatTotal: clampCurrency(addonFlat),
       freqDiscount: clampCurrency(freqDiscountHighRaw),
       ecoUpcharge: clampCurrency(ecoUpchargeHighRaw),
       total: clampCurrency(totalBeforePromoHighRaw),
@@ -301,8 +355,27 @@ export default function QuoteCalculator({
       cleanType,
       ecoProducts,
       frequency,
+
+      // Add-ons (for UTM / contact context)
+      addonFridge: includeFridge,
+      addonOven: includeOven,
+      addonSecondKitchen: includeSecondKitchen,
+      addonHoursLow,
+      addonHoursHigh,
+      addonFlat: clampCurrency(addonFlat),
     };
-  }, [bedrooms, bathrooms, sqft, cleanType, frequency, ecoProducts, promoValid]);
+  }, [
+    bedrooms,
+    bathrooms,
+    sqft,
+    cleanType,
+    frequency,
+    ecoProducts,
+    promoValid,
+    includeFridge,
+    includeOven,
+    includeSecondKitchen,
+  ]);
 
   const hasSqftRange = result.sqftLow !== result.sqftHigh;
   const hasHourRange = result.billableHoursLow !== result.billableHours;
@@ -349,7 +422,7 @@ export default function QuoteCalculator({
               label="Bathrooms"
               value={bathrooms}
               setValue={setBathrooms}
-              min={1}
+              min={0}
             />
           </div>
           <p className="mt-2 text-xs text-stone-500">
@@ -393,7 +466,7 @@ export default function QuoteCalculator({
         </div>
       </div>
 
-      {/* Clean Type, Frequency, Eco, & Promo */}
+      {/* Clean Type, Frequency, Eco, Promo & Add-ons */}
       <div className="mt-6 rounded-2xl border p-4 relative">
         <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
           {/* Clean Type */}
@@ -512,6 +585,59 @@ export default function QuoteCalculator({
             </p>
           </div>
         </div>
+
+        {/* Add-ons */}
+        <div className="mt-4 pt-3 border-t text-sm">
+          <div className="text-stone-700 font-medium mb-2">
+            Optional add-ons
+          </div>
+          <div className="space-y-2 text-xs text-stone-700">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={includeFridge}
+                onChange={(e) => setIncludeFridge(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+              />
+              <span>
+                <span className="font-medium">Inside fridge</span>{" "}
+                <span className="text-stone-500">
+                  (+$55, adds ~30–75 min)
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={includeOven}
+                onChange={(e) => setIncludeOven(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+              />
+              <span>
+                <span className="font-medium">Inside oven</span>{" "}
+                <span className="text-stone-500">
+                  (+$35, adds ~20–45 min)
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={includeSecondKitchen}
+                onChange={(e) => setIncludeSecondKitchen(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+              />
+              <span>
+                <span className="font-medium">Second full kitchen</span>{" "}
+                <span className="text-stone-500">
+                  (adds ~300 sq ft and ~60–90 min)
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
       </div>
 
       {/* Summary */}
@@ -530,13 +656,39 @@ export default function QuoteCalculator({
               </span>
             </li>
 
-            {/* Base clean: use upper estimate as conservative anchor */}
+            {/* Cleaning time (upper estimate, time-based only) */}
             <li className="flex justify-between">
-              <span>Base clean (upper estimate)</span>
+              <span>Cleaning time (upper estimate)</span>
               <span className="tabular-nums">
-                ${result.baseLabor.toLocaleString()}
+                ${result.baseLaborCore.toLocaleString()}
               </span>
             </li>
+
+            {/* Flat add-ons */}
+            {result.addonFlatTotal > 0 && (
+              <>
+                {result.addonFridge && (
+                  <li className="flex justify-between">
+                    <span>Inside fridge add-on</span>
+                    <span className="tabular-nums">+${ADDON_FRIDGE_PRICE}</span>
+                  </li>
+                )}
+                {result.addonOven && (
+                  <li className="flex justify-between">
+                    <span>Inside oven add-on</span>
+                    <span className="tabular-nums">+${ADDON_OVEN_PRICE}</span>
+                  </li>
+                )}
+                {result.addonSecondKitchen && (
+                  <li className="flex justify-between">
+                    <span>Second full kitchen</span>
+                    <span className="tabular-nums text-xs text-stone-500">
+                      time-based (~60–90 min)
+                    </span>
+                  </li>
+                )}
+              </>
+            )}
 
             {result.freqDiscount > 0 && (
               <li className="flex justify-between">
@@ -678,7 +830,12 @@ export default function QuoteCalculator({
                 cleaners: result.time.cleaners,
                 billableHoursLow: result.billableHoursLow,
                 billableHours: result.billableHours,
-                hourlyRate: result.hourlyRate, // still available if you want it later, but not shown
+                hourlyRate: result.hourlyRate, // available if you want it later, but not shown
+                addons: {
+                  fridge: result.addonFridge,
+                  oven: result.addonOven,
+                  secondKitchen: result.addonSecondKitchen,
+                },
                 promo: promoValid
                   ? {
                     code: promoCode.trim().toUpperCase(),
