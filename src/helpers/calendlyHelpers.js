@@ -5,31 +5,34 @@ export function buildCalendlyUrlWithUtm(baseUrl, result, promo) {
   const yy = String(now.getFullYear()).slice(-2);
   const hh = String(now.getHours()).padStart(2, "0");
   const min = String(now.getMinutes()).padStart(2, "0");
-  const timestamp = `${mm}-${dd}-${yy}|${hh}:${min}`;
+  const ts = `${mm}-${dd}-${yy}|${hh}:${min}`;
 
   const utm = new URLSearchParams({
     utm_source: "quote_calculator",
     utm_medium: "website",
     utm_campaign: "cleaning_quote",
     utm_content: [
-      `clean_type=${result.cleanType}`,
-      `beds=${result.bedrooms}`,
-      `baths=${result.bathrooms}`,
-      `sf_est_from_bed+bath=${result.estSqft}`,
-      `sf_entered=${result.sqftInput}`,
+      `type=${result.cleanType}`,
+      `bed=${result.bedrooms}`,
+      `ba=${result.bathrooms}`,
+      `sf_heur=${result.estSqft}`,
+      `sf_ent=${result.sqftInput}`,
       `sf_low=${result.sqftLow}`,
       `sf_high=${result.sqftHigh}`,
-      `hours_estimated=${result.billableHoursLow}-${result.billableHoursHigh}`,
-      `cleaning_frequency=${result.frequency}`,
-      `use_eco_products=${result.ecoProducts ? "yes" : "no"}`,
-      `addon_fridge=${result.addonFridge ? "yes" : "no"}`,
-      `addon_oven=${result.addonOven ? "yes" : "no"}`,
-      `addon_second_kitchen=${result.addonSecondKitchen ? "yes" : "no"}`,
+      `hours_est=${result.billableHoursLow}-${result.billableHoursHigh}`,
+      `freq=${result.frequency}`,
+      `use_eco=${result.ecoProducts ? "yes" : "no"}`,
+      `add=${[
+        result.addonFridge ? "Fr" : "",
+        result.addonOven ? "Ov" : "",
+        result.addonSecondKitchen ? "2Kit" : "",
+      ]
+        .filter(Boolean)
+        .join("") || "none"}`,
       `promo=${promo.applied ? promo.code : "none"}`,
-      `promoAmt=${promo.applied ? promo.amount : 0}`,
-      `total_estimated_price_(after_promo)=${result.totalAfterPromoLow}-${result.totalAfterPromoHigh}`,
-      `timestamp=${timestamp}`,
-    ].join("_"),
+      `est_after_promo=${result.totalAfterPromoLow}-${result.totalAfterPromoHigh}`,
+      `ts=${ts}`,
+    ].join("~"),
   });
 
   return `${baseUrl}?${utm.toString()}`;
