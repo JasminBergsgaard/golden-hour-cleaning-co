@@ -34,20 +34,16 @@ import { buildCalendlyUrlWithUtm } from "../helpers/calendlyHelpers";
  * - GOLDENWELCOME = $50 off Deep Clean only; applied to estimated total (not deposit)
  */
 
-const HOURLY_RATE = 75;
-const ECO_MULTIPLIER = 1.15; // 15% upcharge
-
-// Average productivity: sq ft per hour per cleaner (for DEEP clean baseline)
-const SQFT_PER_HOUR_BASE = 290;
-
-// Minimum visit length for 1 cleaner (in hours)
+const HOURLY_RATE = 75;          // used internally, never shown in UI
+const ECO_MULTIPLIER = 1.15;     // 15% upcharge
+const SQFT_PER_HOUR_BASE = 290;  // average productivity per cleaner (deep baseline)
 const MIN_VISIT_HOURS_ONE_CLEANER = 2;
 
 // Deep is baseline (1.0). Standard is faster; Move-Out is slower.
 const CLEAN_TYPE_MULTIPLIER = {
-  standard: 0.8, // ~20% less time than deep
-  deep: 1.0,     // baseline
-  move_out: 1.3, // ~30% more time than deep
+  standard: 0.8,
+  deep: 1.0,
+  move_out: 1.3,
 };
 
 function clampCurrency(n) {
@@ -520,7 +516,7 @@ export default function QuoteCalculator({
 
       {/* Summary */}
       <div className="mt-8 grid gap-4 md:grid-cols-2">
-        {/* Breakdown */}
+        {/* Breakdown (high-end, simplified, no hourly wording) */}
         <div className="rounded-2xl border p-4">
           <label className="font-medium text-stone-800">Breakdown</label>
           <ul className="mt-3 space-y-1 text-sm text-stone-700">
@@ -534,13 +530,9 @@ export default function QuoteCalculator({
               </span>
             </li>
 
-            {/* Labor: explicitly upper estimate, tied to hourly rate */}
+            {/* Base clean: use upper estimate as conservative anchor */}
             <li className="flex justify-between">
-              <span>
-                Labor at ${HOURLY_RATE}/hr (upper estimate:{" "}
-                {result.billableHours.toFixed(1)}{" "}
-                {hoursUnit(result.billableHours)})
-              </span>
+              <span>Base clean (upper estimate)</span>
               <span className="tabular-nums">
                 ${result.baseLabor.toLocaleString()}
               </span>
@@ -548,7 +540,7 @@ export default function QuoteCalculator({
 
             {result.freqDiscount > 0 && (
               <li className="flex justify-between">
-                <span>Frequency discount (applied before eco)</span>
+                <span>Frequency discount</span>
                 <span className="tabular-nums">
                   −${result.freqDiscount.toLocaleString()}
                 </span>
@@ -674,7 +666,8 @@ export default function QuoteCalculator({
               email={CONTACT.email}
               context={{
                 level: cleanType,
-                sqft: result.usedSqft,
+                sqftLow: result.sqftLow,
+                sqftHigh: result.sqftHigh,
                 sqftInput: result.sqftInput,
                 bedrooms,
                 bathrooms,
@@ -685,7 +678,7 @@ export default function QuoteCalculator({
                 cleaners: result.time.cleaners,
                 billableHoursLow: result.billableHoursLow,
                 billableHours: result.billableHours,
-                hourlyRate: result.hourlyRate,
+                hourlyRate: result.hourlyRate, // still available if you want it later, but not shown
                 promo: promoValid
                   ? {
                     code: promoCode.trim().toUpperCase(),

@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { formatCurrency, buildMailto, buildSmsLink, formatPhone } from '../helpers/contactHelpers';
+import {
+  formatCurrency,
+  buildMailto,
+  buildSmsLink,
+  formatPhone,
+} from "../helpers/contactHelpers";
 
 export default function ContactSheet({ phone, sms, email, context }) {
   const [open, setOpen] = useState(false);
@@ -7,25 +12,65 @@ export default function ContactSheet({ phone, sms, email, context }) {
   const firstActionRef = useRef(null);
 
   const levelLabel =
-    context.level === "standard" ? "Standard Refresh" :
-      context.level === "move_out" ? "Move-In / Move-Out" : "Deep Glow";
+    context.level === "standard"
+      ? "Standard Refresh"
+      : context.level === "move_out"
+        ? "Move-In / Move-Out"
+        : "Deep Glow";
 
   const humanFreq =
-    context.frequency === "weekly" ? "Weekly" :
-      context.frequency === "bi_weekly" ? "Bi-weekly" :
-        context.frequency === "monthly" ? "Monthly" : "One-time";
+    context.frequency === "weekly"
+      ? "Weekly"
+      : context.frequency === "bi_weekly"
+        ? "Bi-weekly"
+        : context.frequency === "monthly"
+          ? "Monthly"
+          : "One-time";
+
+  const hasSqftRange =
+    typeof context.sqftLow === "number" &&
+    typeof context.sqftHigh === "number" &&
+    context.sqftLow !== context.sqftHigh;
+
+  const homeSizeLine = hasSqftRange
+    ? `Home size used for estimate: ${context.sqftLow.toLocaleString()}–${context.sqftHigh.toLocaleString()} sq ft\n`
+    : typeof context.sqftHigh === "number"
+      ? `Home size used for estimate: ${context.sqftHigh.toLocaleString()} sq ft\n`
+      : "";
+
+  const hasPriceRange =
+    typeof context.totalLow === "number" &&
+    typeof context.total === "number" &&
+    context.totalLow !== context.total;
+
+  const priceLine = hasPriceRange
+    ? `Estimated total: ${formatCurrency(
+      context.totalLow
+    )}–${formatCurrency(context.total)}\n`
+    : typeof context.total === "number"
+      ? `Estimated total: ${formatCurrency(context.total)}\n`
+      : "";
+
+  const ecoLine = `Eco-friendly products: ${context.ecoProducts ? "Yes" : "No"
+    }\n`;
+
+  const promoLine = context.promo
+    ? `Promo applied: ${context.promo.code} (−${formatCurrency(
+      context.promo.amount
+    )})\n`
+    : "";
 
   const summary =
     `Hello Golden Hour — I have a question about my quote.\n` +
     `Service: ${levelLabel}\n` +
     `Bedrooms: ${context.bedrooms}\n` +
     `Bathrooms: ${context.bathrooms}\n` +
-    `Square footage entered: ${context.sqftInput.toLocaleString()} sq ft\n` +
-    `Square footage used for quote: ${context.sqft.toLocaleString()} sq ft\n` +
+    homeSizeLine +
     `Cleaning frequency: ${humanFreq}\n` +
-    `${context.promo ? `Promo applied: ${context.promo.code} (−${formatCurrency(context.promo.amount)})\n` : ""}` +
-    `Estimated total: ${formatCurrency(context.total)}\n\n` +
-    `My question: `;
+    ecoLine +
+    promoLine +
+    priceLine +
+    `\nMy question: `;
 
   const smsHref = buildSmsLink({ phone: sms, message: summary });
   const mailHref = buildMailto({
@@ -130,7 +175,9 @@ export default function ContactSheet({ phone, sms, email, context }) {
                   Call {formatPhone(phone)}
                 </div>
               </div>
-              <span className="text-xs text-stone-500 shrink-0">Tap to dial</span>
+              <span className="text-xs text-stone-500 shrink-0">
+                Tap to dial
+              </span>
             </a>
 
             <a
